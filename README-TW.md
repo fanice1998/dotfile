@@ -21,5 +21,5 @@ sudo dnf copr enable alebastr/hyprland
 sudo dnf copr enable alebastr/waybar
 
 # eza
-sudo dnf copr enable bieszczaders/eza
+sudo dnf copr enable alternateved/eza
 ```
