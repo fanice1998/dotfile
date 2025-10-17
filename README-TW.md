@@ -11,11 +11,13 @@
 終端應用工具: kitty or wizterm  
 更好的ls: eza  
 SHELL: fish  
+
+中文輸入法: fcitx5 fcitx5-chewing fcitx5-chinese-addons
   
 啟動三方包  
 ```
 # hyprland
-sudo dnf copr enable alebastr/hyprland
+sudo dnf copr enable solopasha/hyprland
 
 # waybar
 sudo dnf copr enable alebastr/waybar
