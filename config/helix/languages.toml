@@ -1,0 +1,47 @@
+# ==================================
+#            Languages.toml
+# ==================================
+
+# Rust
+[[language]]
+name = "rust"
+language-servers = [ "rust-analyzer" ]
+auto-format = true
+
+[language.formatter]
+command = "rustfmt"
+args = ["--edition", "2021"]
+
+# Go
+[[language]]
+name = "go"
+auto-format = true
+language-servers = [ "gopls" ]
+
+# Python
+[[language]]
+name = "python"
+language-servers = [ "pyright" ]
+auto-format = true
+
+[language.formatter]
+command = "black"
+
+# JavaScript / TypeScript
+[[language]]
+name = "javascript"
+language-servers = [ "typescript-language-server" ]
+
+[[language]]
+name = "typescript"
+language-servers = [ "typescript-language-server" ]
+
+# HTML
+[[language]]
+name = "html"
+language-servers = [ "vscode-html-languageserver" ]
+
+# CSS
+[[language]]
+name = "css"
+language-servers = [ "vscode-css-languageserver" ]

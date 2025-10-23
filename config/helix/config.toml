@@ -1,0 +1,60 @@
+# ==================================
+#            Config.toml
+# ==================================
+
+# Config Path
+# Windows PATH="%AppData%\helix\config.toml"
+# Mac PATH="~/.config/helix/config.toml"
+
+# 預設主題類型
+# "gruvbox_dark", "gruvbox_light", "solarized_dark", "gruvbox"
+theme = "transparent"
+
+[editor]
+# 設定行號顯示
+line-number = "relative"         # "relative"(相對行號), "absolute"(絕對行號)
+mouse = false                    # 禁用滑鼠
+auto-completion = true           # 啟用自動完成的自動彈出功能(到底要彈出什麼...)
+auto-format = true               # 儲存時自動格式化
+auto-info = true                 # 是否顯示資訊框
+bufferline = "multiple"          # ("always", "never", "multiple")當使用多個緩衝區時, 會在頂部顯示開啟的緩衝區名稱
+# 需要 25.07.01 才開始支援
+default-line-ending = "lf"       # "native", "lf", "crlf", "ff", "cr", "nel"
+trim-trailing-whitespace = false  # 寫入時是否自動刪除行尾前的空格
+end-of-line-diagnostics = "hint" # 行尾診斷
+auto-save = true                 #自動儲存
+path-completion = true           # 檔案路徑自動補全(絕對路徑, 相對路徑)
+
+[editor.statusline]
+left = ["mode", "spinner"]
+center = ["file-name"]
+right = ["diagnostics", "selections", "position", "register", "file-encoding", "primary-selection-length"]
+
+[editor.whitespace]
+# render: "all"(顯示), "none"(不顯示)
+render.space = "all"     # 空格
+render.tab = "all"       # TAB
+render.newline = "none"   # 換行 \n
+
+characters = { space = "·", tab = "→", newline = "⏎"}
+
+[editor.soft-wrap]
+enable = true
+
+[editor.indent-guides]
+render = true
+character = "┆" # Some characters that work well: "▏", "┆", "┊", "⸽"
+skip-levels = 1
+
+[editor.cursor-shape]
+# 設定光標形狀
+# 根據不同的模式設定不同的光標形狀
+normal = "block"
+insert = "bar"
+select = "underline"
+
+# 25.07.1 support
+[editor.inline-diagnostics]
+# "disable", "hint", "info", "warning", "error"
+cursor-line = "error"
+other-lines = "warning"

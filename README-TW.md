@@ -7,13 +7,16 @@
 剪貼簿管理器: cliphist  
 截圖工具: grim  
 鎖屏工具: hyprlock  
-應用啟動工具: rofi  
+應用啟動工具: fuzzel  
 終端應用工具: kitty or wizterm  
 更好的ls: eza  
 SHELL: fish  
+將圖片複製到剪貼簿: wl-clipboard
 
 中文輸入法: fcitx5 fcitx5-chewing fcitx5-chinese-addons
+字體: jetbrains-mono-fonts
   
+quickshell: sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel cmake ninja-build hyprland-devel wayland-devel wayland-protocols-devel libdisplay-info-devel
 啟動三方包  
 ```
 # hyprland

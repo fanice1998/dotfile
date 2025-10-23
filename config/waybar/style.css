@@ -1,0 +1,32 @@
+
+* {
+    border: none;
+    border-radius: 0;
+    font-family: JetBrainsMono;
+    font-size: 13px;
+    min-height: 0;
+}
+
+window#waybar {
+    background: rgba(43, 48, 59, 0.3);
+    border-bottom: 3px solid rgba(100, 114, 125, 0.5);
+    color: #ffffff;
+    transition-property: background-color;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    background: transparent;
+    color: #64748B;
+}
+
+#workspaces button.active {
+    background: #334155;
+    color: #ffffff;
+}
+
+#clock { padding: 0 15px; }
+#pulseaudio { padding: 0 10px; }
+#network { padding: 0 10px; }
+#battery { padding: 0 10px; }
+#tray { padding: 0 10px; }
