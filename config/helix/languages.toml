@@ -45,3 +45,8 @@ language-servers = [ "vscode-html-languageserver" ]
 [[language]]
 name = "css"
 language-servers = [ "vscode-css-languageserver" ]
+
+# qml
+[language-server.qmlls]
+args = ["-E"]
+command = "qmlls"
