@@ -4,7 +4,7 @@ import qs.modules.bar // BarComponent
 import qs
 
 BarComponent {
-    content: Text {
+    Text {
         // required property string time
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: Text.AlignHCenter

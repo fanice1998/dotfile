@@ -3,7 +3,7 @@ import qs.modules.bar
 import qs
 
 BarComponent {
-    content: Text {
+    Text {
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: Text.AlignHCenter
         color: BarSetting.timeWidgetFont

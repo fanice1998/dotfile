@@ -18,7 +18,7 @@ Item {
         id: child
 
         anchors.fill: parent
-        radius: 12
+        radius: 30
         border.color: "white"
         border.width: 1
         antialiasing: true

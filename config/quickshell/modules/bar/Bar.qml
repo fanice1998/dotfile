@@ -49,6 +49,7 @@ Scope {
                         // Layout.minimumWidth: 0
                         implicitWidth: windowInfo.implicitWidth
 
+
                         Text {
                             id: windowInfo
 
@@ -63,6 +64,7 @@ Scope {
                             text: focusedWindow? focusedWindow.title: "No active window"
                         }
                     }
+                    backgroundColor: "#50FFFFFF"
                 }
 
                 // Right Bar
