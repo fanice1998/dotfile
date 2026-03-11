@@ -49,3 +49,14 @@ background-opacity = 0.8
 # # Just for example:
 # resize-overlay-duration = 4s 200ms
 theme = TokyoNight Night
+
+# 光標動畫（最像 Kitty 的 comet trail）
+custom-shader = shaders/cursor_tail.glsl
+
+# 啟用動畫迴圈（always 最穩，失去焦點也會繼續動）
+custom-shader-animation = always
+
+# 建議搭配 Kitty 風格的光標（beam + 閃爍）
+cursor-style = bar
+cursor-style-blink = true
+
