@@ -376,11 +376,19 @@
 # [developer]
 # log-level = "OFF"
 # enable-log-file = false
-
+enable-scroll-bar = true
 
 [window]
 opacity = 0.85
 blur = true
+decorations = "Enabled"
+windows-corner-preference = "Round"
+
+# [window-background-image]
+# path = "image path"
+# opacity = 0.8
+# x = 0.0
+# y = -100.0
 
 [editor]
 program = "nvim"
@@ -401,4 +409,16 @@ use-drawable-chars = true
 symbol-map = []
 disable-warnings-not-found = false
 additional-dirs = []
-family = "等距更紗黑體 TC"
+extras = [{family = "等距更紗黑體 TC"}]
+
+[navigation]
+# tab mode = [ "Bookmark", "Nativetab"(only mac), "BottomTab", "TopTab", "Plain"(Not display tab)]
+mode = "Bookmark"
+use-split = true
+hide-if-single = true
+use-fork = false
+
+[platform]
+# macos.env-vars = ["MACOS_SPECIFIC=yes"]
+# linux.env-vars = ["LINUX_SPECIFIC=yes"]
+# windows.env-vars = ["WINDOWS_SPECIFIC=yes"]
