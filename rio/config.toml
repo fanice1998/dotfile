@@ -409,7 +409,8 @@ use-drawable-chars = true
 symbol-map = []
 disable-warnings-not-found = false
 additional-dirs = []
-extras = [{family = "等距更紗黑體 TC"}]
+# extras = [{family = "等距更紗黑體 TC"}]
+extras = [{family = "Sarasa Mono TC"}] # macos
 
 [navigation]
 # tab mode = [ "Bookmark", "Nativetab"(only mac), "BottomTab", "TopTab", "Plain"(Not display tab)]
