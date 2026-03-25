@@ -391,8 +391,13 @@ windows-corner-preference = "Round"
 # y = -100.0
 
 [editor]
-program = "nvim"
+program = 'nvim'
 args = []
+
+[cursor]
+shape = "block"
+blinking = true
+blinking-interval = 1000
 
 [bell]
 visual = false
@@ -401,6 +406,7 @@ audio = false
 [developer]
 log-level = "OFF"
 enable-log-file = false
+draw-bold-text-with-light-colors = true
 
 [fonts]
 size = 16
@@ -409,8 +415,9 @@ use-drawable-chars = true
 symbol-map = []
 disable-warnings-not-found = false
 additional-dirs = []
-# extras = [{family = "等距更紗黑體 TC"}]
-extras = [{family = "Sarasa Mono TC"}] # macos
+extras = [{family = "等距更紗黑體 TC"}]
+# extras = [{family = "Sarasa Mono TC"}] # For mac
+
 
 [navigation]
 # tab mode = [ "Bookmark", "Nativetab"(only mac), "BottomTab", "TopTab", "Plain"(Not display tab)]
@@ -418,8 +425,14 @@ mode = "Bookmark"
 use-split = true
 hide-if-single = true
 use-fork = false
+unfocused-split-opacity = 0.65
 
 [platform]
 # macos.env-vars = ["MACOS_SPECIFIC=yes"]
 # linux.env-vars = ["LINUX_SPECIFIC=yes"]
 # windows.env-vars = ["WINDOWS_SPECIFIC=yes"]
+
+windows.window.opacity = 0.85
+macos.window.opacity = 0.75
+
+
