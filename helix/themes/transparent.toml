@@ -1,0 +1,9 @@
+# inherits = "gruvbox"
+# inherits = "heisenberg"
+# inherits = "kinda_nvim"
+inherits = "catppuccin_mocha"
+"ui.background" = { bg = "none" }
+"ui.text" = { fg = "white", bg = "none" }
+# "ui.selection" = { bg = "none" }
+"ui.cursor" = { fg = "white", bg = "gray", modifiers = ["reversed"] }
+
