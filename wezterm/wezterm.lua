@@ -6,7 +6,7 @@ config.color_scheme = 'Gruvbox Dark Hard'
 -- ==================== 背景透明 + 模糊 ====================
 config.window_background_opacity = 0.85
 config.macos_window_background_blur = 28
-config.win32_system_backdrop = 'Acrylic'
+-- config.win32_system_backdrop = 'Acrylic'
 
 -- ==================== 字體 ====================
 config.font = wezterm.font('JetBrains Mono', { weight = 'Medium' })
