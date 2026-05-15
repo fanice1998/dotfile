@@ -1,0 +1,8 @@
+if status is-interactive
+    # Commands to run in interactive sessions can go here
+end
+
+alias ls="eza --icons"
+alias rm="trash"
+
+starship init fish | source
