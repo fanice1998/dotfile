@@ -46,11 +46,6 @@ language-servers = [ "vscode-html-languageserver" ]
 name = "css"
 language-servers = [ "vscode-css-languageserver" ]
 
-# # PHP
-# [language-server.phpactor]
-# command = "phpactor"
-# args = ["language-server"]
-
 [language-server.intelephense.config]
 environment.phpVersion = "7.3.0"
 environment.includePaths = ["vendor", "src", "config", "templates"]
@@ -59,8 +54,3 @@ files.associations = ["*.php", "*.ctp"]
 [[language]]
 name = "php"
 file-types = ["php", "inc", "php4", "php5", "phtml", "ctp"]
-
-# [[language]]
-# name = "php"
-# language-servers = [ "phpactor" ]
-# roots = [".git", "composer.json", "index.php"]
