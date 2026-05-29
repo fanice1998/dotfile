@@ -1,0 +1,2 @@
+- eza (Beautiful ls)
+  - Fedora `eza`
