@@ -25,7 +25,7 @@ if $nu.is-interactive {
 # ============================================
 # Go 環境設定
 let is_termux = ($nu.os-info.name == "android")
-let home = $nu.home-path
+let home = $nu.home-dir
 
 # --- GOPATH 設定 ---
 $env.GOPATH = ($home | path join "go")
