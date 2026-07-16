@@ -21,16 +21,47 @@
 $env.EDITOR = "hx"
 $env.VISUAL = "hx"
 
+# ============================================
+# Go 環境設定（同時支援 Termux 與一般 Linux）
+# ============================================
 # Go 環境設定
-$env.GOROOT = "/data/data/com.termux/files/usr/lib/go"
-$env.GOPATH = $"($env.HOME)/go"
+let is_termux = ($nu.os-info.name == "android")
+let home = $nu.home-path
 
-# 把 Go 的 bin 加到 PATH
-$env.PATH = ($env.PATH | split row (char esep) | prepend $"($env.GOPATH)/bin")
-$env.PATH = ($env.PATH | split row (char esep) | prepend "/data/data/com.termux/files/usr/bin")
+# --- GOPATH 設定 ---
+$env.GOPATH = ($home | path join "go")
+
+# --- GOROOT ---
+if $is_termux {
+  let termux_usr = "/data/data/com.termux/files/usr"
+  $env.GOROOT = ($termux_usr | path join "lib" "go")
+
+  let termux_go_bin = ($termux_usr | path join "bin")
+  if ($termux_go_bin | path exists) {
+    $env.PATH = ($env.PATH | prepend $termux_go_bin)
+  }
+} else {
+  $env.PATH = ($env.PATH | append '/usr/local/go/bin')
+}
+
+# --- $GOPATH/bin ---
+let go_bin = ($env.GOPATH | path join "bin")
+if ($go_bin | path exists) {
+  $env.PATH = ($env.PATH | prepend $go_bin)
+}
 
 # 讓 Go 使用 Go Modules（推薦）
 $env.GO111MODULE = "on"
 $env.GOPROXY = "https://proxy.golang.org,direct"
+
 # Close welcome message
 $env.config.show_banner = false
+
+# remove windows path for wsl
+$env.PATH = (
+  $env.PATH |
+  where { |p|
+    not ($p | str starts-with "/mnt/c") |
+    uniq
+  }
+)
