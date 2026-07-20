@@ -18,6 +18,8 @@ if command -v starship &>/dev/null; then
   if ! grep -qF 'eval "$(starship init zsh)"' ~/.zshrc 2>/dev/null; then
     echo 'eval "$(starship init zsh)"' >> ~/.zshrc
   fi
+else
+  curl -sS https://starship.rs/install.sh | sh
 fi
 
 source ~/.zshrc
