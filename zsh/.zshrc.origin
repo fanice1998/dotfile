@@ -1,0 +1,36 @@
+# ===== 基本設定 =====
+export HISTFILE=~/.zsh_history
+export HISTSIZE=50000
+export SAVEHIST=50000
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_FIND_NO_DUPS
+setopt HIST_REDUCE_BLANKS
+
+# ===== 補全（cd 提示的關鍵）=====
+autoload -Uz compinit
+compinit -C                    # -C 加快啟動速度
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path ~/.zsh/cache
+
+# ===== 插件 =====
+source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
+source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# Autosuggestions 設定（灰色提示）
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
+
+# ===== 按鍵綁定 =====
+bindkey '^[[A' history-beginning-search-backward   # 上鍵搜尋歷史
+bindkey '^[[B' history-beginning-search-forward
+bindkey '^[[Z' reverse-menu-complete               # Shift+Tab 反向補全
+
+# ===== 常用 alias =====
+alias ll='ls -lah --color=auto'
+alias gs='git status'
+alias gd='git diff'
+alias gl='git log --oneline --graph -15'
