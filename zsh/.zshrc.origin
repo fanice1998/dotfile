@@ -25,8 +25,13 @@ ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 
 # ===== 按鍵綁定 =====
-bindkey '^[[A' history-beginning-search-backward   # 上鍵搜尋歷史
-bindkey '^[[B' history-beginning-search-forward
+# 上/下鍵做 history search，並自動把游標移到行尾
+autoload -U history-search-end
+zle -N history-beginning-search-backward-end history-search-end
+zle -N history-beginning-search-forward-end history-search-end
+
+bindkey '^[[A' history-beginning-search-backward-end
+bindkey '^[[B' history-beginning-search-forward-end
 bindkey '^[[Z' reverse-menu-complete               # Shift+Tab 反向補全
 
 # ===== 常用 alias =====
