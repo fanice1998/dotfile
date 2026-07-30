@@ -1,12 +1,12 @@
 #!/bin/zsh
 
 # Tips about text history
-if [ ! -d fzf-tab ]; then
+if [ ! -d ~/.zsh/fzf-tab ]; then
   git clone https://github.com/Aloxaf/fzf-tab ~/.zsh/fzf-tab
 fi
 
 # Syntax highlighting
-if [ ! -d zsh-syntax-highlighting ]; then
+if [ ! -d ~/.zsh/zsh-syntax-highlighting ]; then
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ~/.zsh/zsh-syntax-highlighting
 fi
 
@@ -25,7 +25,7 @@ if command -v go >/dev/null 2>&1; then
 fi
 
 # starship install and setting zshrc
-if command -v starship 2>&1; then
+if command -v starship >/dev/null 2>&1; then
   if ! grep -qF 'eval "$(starship init zsh)"' ~/.zshrc 2>/dev/null; then
     echo 'eval "$(starship init zsh)"' >> ~/.zshrc
   fi
