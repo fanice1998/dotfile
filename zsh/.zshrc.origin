@@ -30,8 +30,28 @@ autoload -U history-search-end
 zle -N history-beginning-search-backward-end history-search-end
 zle -N history-beginning-search-forward-end history-search-end
 
+# 上下鍵搜尋指令歷史紀錄
 bindkey '^[[A' history-beginning-search-backward-end
 bindkey '^[[B' history-beginning-search-forward-end
+bindkey '^[0A' history-beginning-search-backward-end
+bindkey '^[0B' history-beginning-search-forward-end
+
+# Ctrl + Left / Right 以 "單字" 為單位移動
+bindkey '^[[1;5D' backward-word   # Ctrl + ←
+bindkey '^[[1;5C' forward-word    # Ctrl + →
+bindkey '^[0D' backward-word      # Ctrl + ←
+bindkey '^[0C' forward-word       # Ctrl + →
+
+# Delete 鍵
+bindkey '^[[3~' delete-char
+
+# Ctrl + Backspace 刪除前一個單字
+bindkey '^H' backward-kill-word
+bindkey '^[[3;5~' backward-kill-word
+
+# Alt + Backspace 刪除前一個單字
+bindkey '^[^?' backward-kill-word
+
 bindkey '^[[Z' reverse-menu-complete               # Shift+Tab 反向補全
 
 # ===== 常用 alias =====
