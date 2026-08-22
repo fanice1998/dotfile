@@ -1,8 +1,8 @@
 -- ~/.config/nvim/lua/plugins/colorscheme.lua
 return {
-  -- override tokyonight 的 opts (會覆蓋/lazyVim 預設的)
+  -- override everforest 的 opts (會覆蓋/lazyVim 預設的)
   {
-    "folke/tokyonight.nvim",
+    "sainnhe/everforest",
     opts = {
       transparent = true,
       style = "moon",
