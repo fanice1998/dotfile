@@ -8,7 +8,7 @@ return {
     "sainnhe/everforest",
     lazy = false,
     priority = 1000,
-    config = function()
+    init = function()
       vim.g.everforest_background = "medium" -- soft / medium / hard
       vim.g.everforest_enable_italic = 1
       vim.g.everforest_better_performance = 1
@@ -17,9 +17,45 @@ return {
       -- 1. Transparent background and sider.
       -- 2. The background, sider, and floating windows are all transparent.
       vim.g.everforest_transparent_background = 2
-
+    end,
+    config = function()
       -- Apply color theme
       vim.cmd.colorscheme("everforest")
+
+      -- Clear the background color of LazyVim floating terminal and floating window
+      local function clear_terminal_bg()
+        local term_groups = {
+          "Normal",
+          "NormalNC",
+          "NormalFloat",
+          "FloatBorder",
+          "FloatTitle",
+          "TermNormal",
+          "TermNormalNC",
+          "EndOfBuffer",
+          "SignColumn",
+          "SnacksTerminal",
+          "SnacksTerminalBorder",
+          "SnacksNormal",
+          "SnacksNormalNC",
+        }
+
+        for _, group in ipairs(term_groups) do
+          vim.api.nvim_set_hl(0, group, { bg = "NONE", ctermbg = "NONE" })
+        end
+      end
+
+      clear_terminal_bg()
+
+      vim.api.nvim_create_autocmd({ "TermOpen", "BufEnter" }, {
+        pattern = "*",
+        callback = function()
+          if vim.bo.buftype == "terminal" then
+            vim.opt_local.winhighlight = "Normal:Normal,NormalNC:NormalNC"
+          end
+          clear_terminal_bg()
+        end,
+      })
     end,
   },
 
