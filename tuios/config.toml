@@ -47,7 +47,8 @@ hide_clock = false
 show_clock = false
 show_cpu = false
 show_ram = false
-theme = 'floraverse'
+# theme = 'floraverse'
+theme = 'fun_forrest'
 
 [keybindings]
 leader_key = 'ctrl+b'
