@@ -44,9 +44,9 @@ preferred_shell = ''
 whichkey_position = ''
 window_title_position = ''
 hide_clock = false
-show_clock = false
-show_cpu = false
-show_ram = false
+show_clock = true
+show_cpu = true
+show_ram = true
 # theme = 'floraverse'
 theme = 'fun_forrest'
 
