@@ -1,22 +1,60 @@
+# Alacritty — aligned with official spec (0.16+)
+# https://alacritty.org/config-alacritty.html
+# Format: TOML 1.1  |  live reload: general.live_config_reload
+
+[general]
+import = [
+  "~/.config/alacritty/current.toml",
+]
+live_config_reload = true
+ipc_socket = true
+# working_directory = "None"
+
+[env]
+TERM = "alacritty"
+# 遠端沒有 alacritty terminfo 時改用：
+# TERM = "xterm-256color"
+EDITOR = "nvim"
+
+# ---------------------------------------------------------------------------
+# Window
+# ---------------------------------------------------------------------------
 [window]
+# dimensions = { columns = 0, lines = 0 }  # 0 = 交給視窗管理員
+# position = "None"                        # Wayland 無效
 padding = { x = 8, y = 8 }
 dynamic_padding = true
-# Decorations "Full", "None", "Transparent"(macOS), "Buttonless"(macOS)
+# "Full" | "None" | "Transparent"(macOS) | "Buttonless"(macOS)
 decorations = "Full"
 opacity = 0.85
-# For macOS/KDE wayland ( true | false )
+# macOS / KDE Wayland
 blur = true
-# Startup_mode "Windowed", "Maximized" | "Fullscreen" | "SimpleFullscreen"(macOS)
+# "Windowed" | "Maximized" | "Fullscreen" | "SimpleFullscreen"(macOS)
 startup_mode = "Windowed"
 title = "DA~LALA~"
 dynamic_title = true
+class = { instance = "Alacritty", general = "Alacritty" }
+# 搭配 dark theme；系統裝飾跟 GTK/CSD
+decorations_theme_variant = "Dark"
+resize_increments = true
+# "Normal" | "AlwaysOnTop"
+level = "Normal"
+# option_as_alt = "None"  # macOS only
 
+# ---------------------------------------------------------------------------
+# Scrolling
+# ---------------------------------------------------------------------------
 [scrolling]
 history = 20000
 multiplier = 3
 
+# ---------------------------------------------------------------------------
+# Font
+# ---------------------------------------------------------------------------
 [font]
 size = 12.0
+offset = { x = 0, y = 1 }
+glyph_offset = { x = 0, y = 0 }
 builtin_box_drawing = true
 
 [font.normal]
@@ -32,52 +70,108 @@ style = "Italic"
 [font.bold_italic]
 style = "Bold Italic"
 
+# 主題色在 current.toml；這裡只放不會被主題覆蓋的行為旗標
+[colors]
+draw_bold_text_with_bright_colors = false
+transparent_background_colors = false
+
+# ---------------------------------------------------------------------------
+# Bell
+# ---------------------------------------------------------------------------
+[bell]
+animation = "EaseOutExpo"
+duration = 150
+color = "#ffffff"
+# command = "None"
+
+# ---------------------------------------------------------------------------
+# Selection
+# ---------------------------------------------------------------------------
+[selection]
+semantic_escape_chars = ",│`|:\"' ()[]{}<>\t"
+# Linux：選取後寫入 PRIMARY（中鍵貼上）
+save_to_clipboard = true
+
+# ---------------------------------------------------------------------------
+# Cursor
+# ---------------------------------------------------------------------------
 [cursor]
 style = { shape = "Block", blinking = "On" }
+vi_mode_style = { shape = "Beam", blinking = "Off" }
 blink_interval = 750
+# 0 = 不要停閃
+blink_timeout = 0
 unfocused_hollow = true
+thickness = 0.15
 
+# ---------------------------------------------------------------------------
+# Terminal
+# ---------------------------------------------------------------------------
 [terminal]
-# shell = { program = "/usr/bin/zsh", args = "-l"}
-# osc52 "Disable", "OnlyCopy", "OnlyPaste", "CopyPaste"
-# osc52 = "OnlyCopy""
+shell = { program = "/usr/bin/zsh", args = ["-l"] }
+# "Disabled" | "OnlyCopy" | "OnlyPaste" | "CopyPaste"
+# OnlyCopy：遠端 tmux/nvim 可 OSC 52 複製，但不准讀剪貼簿
+osc52 = "OnlyCopy"
 
-[selection]
-# save_to_clipboard = false
-# semantic_escape_chars = ",│`|:\"' ()[]{}<>\t"
-
+# ---------------------------------------------------------------------------
+# Mouse
+# ---------------------------------------------------------------------------
 [mouse]
 hide_when_typing = true
+# 預設已有：Right = ExpandSelection、Middle(~Vi) = PasteSelection
+# bindings = [
+#   { mouse = "Right", mods = "Control", action = "Paste" },
+# ]
 
+# ---------------------------------------------------------------------------
+# Hints  （自訂 enabled 會整份覆蓋預設，所以必須把 URL hint 一併寫上）
+# 預設快捷鍵 Ctrl+Shift+O
+# ---------------------------------------------------------------------------
+[hints]
+alphabet = "jfkdls;ahgurieowpq"
+
+[[hints.enabled]]
+command = "xdg-open"
+hyperlinks = true
+post_processing = true
+persist = false
+mouse = { enabled = true }
+binding = { key = "O", mods = "Control|Shift" }
+regex = "(ipfs:|ipns:|magnet:|mailto:|gemini://|gopher://|https://|http://|news:|file:|git://|ssh:|ftp://)[^\\u0000-\\u001F\\u007F-\\u009F<>\"\\s{-}\\^⟨⟩`\\\\]+"
+
+[[hints.enabled]]
+regex = "[0-9a-f]{7,40}"
+action = "Copy"
+post_processing = false
+persist = false
+binding = { key = "H", mods = "Control|Shift" }
+
+# ---------------------------------------------------------------------------
+# Keyboard
+# 未列出的綁定走官方預設（見 alacritty-bindings(5)）：
+#   Ctrl+Shift+C/V  Copy/Paste
+#   Ctrl+Shift+F/B  Search
+#   Ctrl+Shift+Space  Vi mode
+#   Ctrl + / - / 0  字級
+# Tab 相關 action（CreateNewTab / SelectTab*）是 macOS only，Linux 無效故不綁。
+# ---------------------------------------------------------------------------
 [keyboard]
 bindings = [
   { key = "Return", mods = "Control|Shift", action = "SpawnNewInstance" },
-  { key = "N", mods = "Control|Shift", action = "SpawnNewInstance" },
-  { key = "T", mods = "Control|Shift", action = "CreateNewTab" },
-  { key = "]", mods = "Control|Shift", action = "SelectNextTab" },
-  { key = "[", mods = "Control|Shift", action = "SelectPreviousTab" },
-  { key = "1", mods = "Control|Shift", action = "SelectTab1" },
-  { key = "2", mods = "Control|Shift", action = "SelectTab2" },
-  { key = "3", mods = "Control|Shift", action = "SelectTab3" },
-  { key = "4", mods = "Control|Shift", action = "SelectTab4" },
-  { key = "5", mods = "Control|Shift", action = "SelectTab5" },
-  { key = "6", mods = "Control|Shift", action = "SelectTab6" },
-  { key = "7", mods = "Control|Shift", action = "SelectTab7" },
-  { key = "8", mods = "Control|Shift", action = "SelectTab8" },
-  { key = "9", mods = "Control|Shift", action = "SelectTab9" },
-  { key = "0", mods = "Control|Shift", action = "SelectLastTab" },
+  { key = "N", mods = "Control|Shift", action = "CreateNewWindow" },
+  { key = "F11", action = "ToggleFullscreen" },
+  { key = "F11", mods = "Shift", action = "ToggleMaximized" },
+  { key = "K", mods = "Control|Shift", action = "ClearHistory" },
 ]
 
-[general]
-ipc_socket = true
-live_config_reload = true
-import = [
-# "./themes/current.toml",
-  "~/.config/alacritty/current.toml",
-]
-
-[env]
-TERM = "alacritty"
-# 遠端沒 terminfo 再改成 xterm-256color
-# TERM = "xterm-256color"
-EDITOR = "nvim"
+# ---------------------------------------------------------------------------
+# Debug（不穩定，僅排錯時打開）
+# ---------------------------------------------------------------------------
+# [debug]
+# render_timer = false
+# persistent_logging = false
+# log_level = "Warn"
+# renderer = "None"
+# print_events = false
+# highlight_damage = false
+# prefer_egl = false
