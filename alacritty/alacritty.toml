@@ -108,9 +108,10 @@ thickness = 0.15
 # Terminal
 # ---------------------------------------------------------------------------
 [terminal]
+# shell = { program = "/usr/bin/zsh", args = ["-l"] }
 # "Disabled" | "OnlyCopy" | "OnlyPaste" | "CopyPaste"
 # OnlyCopy：遠端 tmux/nvim 可 OSC 52 複製，但不准讀剪貼簿
-osc52 = "OnlyCopy"
+# osc52 = "OnlyCopy"
 
 # ---------------------------------------------------------------------------
 # Mouse
@@ -147,20 +148,42 @@ binding = { key = "H", mods = "Control|Shift" }
 
 # ---------------------------------------------------------------------------
 # Keyboard
-# 未列出的綁定走官方預設（見 alacritty-bindings(5)）：
-#   Ctrl+Shift+C/V  Copy/Paste
-#   Ctrl+Shift+F/B  Search
-#   Ctrl+Shift+Space  Vi mode
-#   Ctrl + / - / 0  字級
-# Tab 相關 action（CreateNewTab / SelectTab*）是 macOS only，Linux 無效故不綁。
+# Command 與 Super 在 Alacritty 是同一個 modifier：
+#   macOS = Cmd    Windows = Win    Linux = Super
+# 跨平台能共用的動作綁兩套：Ctrl+Shift（Win/Linux）+ Command（macOS）。
+# 分頁 API 只有 macOS 有，Windows/Linux 上 CreateNewTab 無效。
+#
+# 未列出的綁定走官方預設：
+#   Win/Linux  Ctrl+Shift+C/V 複製貼上、Ctrl+Shift+F 搜尋、Ctrl +/- 字級
+#   macOS      Cmd+C/V、Cmd+F、Cmd +/-、Cmd+N 新視窗、Cmd+Ctrl+F 全螢幕
 # ---------------------------------------------------------------------------
 [keyboard]
 bindings = [
-  { key = "Return", mods = "Control|Shift", action = "SpawnNewInstance" },
+  # --- 分頁（macOS only；Win 的 Win+T 會被系統吃掉，不會進來） ---
+  { key = "T", mods = "Command", action = "CreateNewTab" },
+  { key = "[", mods = "Command|Shift", action = "SelectPreviousTab" },
+  { key = "]", mods = "Command|Shift", action = "SelectNextTab" },
+  # Shift+[ / ] 在部分鍵盤/版本會變成 { / }（alacritty#8163）
+  { key = "{", mods = "Command|Shift", action = "SelectPreviousTab" },
+  { key = "}", mods = "Command|Shift", action = "SelectNextTab" },
+
+  # --- 新視窗 / 新 process（兩平台同一套肌肉記憶） ---
   { key = "N", mods = "Control|Shift", action = "CreateNewWindow" },
+  { key = "N", mods = "Command", action = "CreateNewWindow" },
+  { key = "Return", mods = "Control|Shift", action = "SpawnNewInstance" },
+  { key = "Return", mods = "Command|Shift", action = "SpawnNewInstance" },
+
+  # --- 全螢幕 / 最大化 ---
   { key = "F11", action = "ToggleFullscreen" },
   { key = "F11", mods = "Shift", action = "ToggleMaximized" },
+  { key = "Return", mods = "Alt", action = "ToggleFullscreen" },
+  { key = "F", mods = "Command|Shift", action = "ToggleFullscreen" },
+
+  # --- 清 scrollback ---
   { key = "K", mods = "Control|Shift", action = "ClearHistory" },
+  # macOS 官方預設：Cmd+K 同時清畫面（\\f）+ 清 history
+  { key = "K", mods = "Command", chars = "\u000c" },
+  { key = "K", mods = "Command", action = "ClearHistory" },
 ]
 
 # ---------------------------------------------------------------------------
