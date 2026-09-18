@@ -1,0 +1,9 @@
+// Compact chrome: one terminal pane + bottom zjstatus (via compact-bar alias).
+// Swap layouts live in default.swap.kdl (Alt [ / Alt ]).
+// Install the wasm first: ./install.sh  (Linux/macOS/WSL) or ./install.ps1 (Windows)
+layout {
+    pane
+    pane size=1 borderless=true {
+        plugin location="compact-bar"
+    }
+}
