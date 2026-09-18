@@ -80,7 +80,8 @@ transparent_background_colors = false
 # ---------------------------------------------------------------------------
 [bell]
 animation = "EaseOutExpo"
-duration = 150
+# 0 = 不要畫面閃白
+duration = 0
 color = "#ffffff"
 # command = "None"
 
@@ -161,11 +162,8 @@ binding = { key = "H", mods = "Control|Shift" }
 bindings = [
   # --- 分頁（macOS only；Win 的 Win+T 會被系統吃掉，不會進來） ---
   { key = "T", mods = "Command", action = "CreateNewTab" },
-  { key = "[", mods = "Command|Shift", action = "SelectPreviousTab" },
-  { key = "]", mods = "Command|Shift", action = "SelectNextTab" },
-  # Shift+[ / ] 在部分鍵盤/版本會變成 { / }（alacritty#8163）
-  { key = "{", mods = "Command|Shift", action = "SelectPreviousTab" },
-  { key = "}", mods = "Command|Shift", action = "SelectNextTab" },
+  { key = "[", mods = "Command", action = "SelectPreviousTab" },
+  { key = "]", mods = "Command", action = "SelectNextTab" },
 
   # --- 新視窗 / 新 process（兩平台同一套肌肉記憶） ---
   { key = "N", mods = "Control|Shift", action = "CreateNewWindow" },
@@ -177,13 +175,12 @@ bindings = [
   { key = "F11", action = "ToggleFullscreen" },
   { key = "F11", mods = "Shift", action = "ToggleMaximized" },
   { key = "Return", mods = "Alt", action = "ToggleFullscreen" },
-  { key = "F", mods = "Command|Shift", action = "ToggleFullscreen" },
+  { key = "Return", mods = "Command", action = "ToggleFullscreen" },
 
   # --- 清 scrollback ---
   { key = "K", mods = "Control|Shift", action = "ClearHistory" },
-  # macOS 官方預設：Cmd+K 同時清畫面（\\f）+ 清 history
-  { key = "K", mods = "Command", chars = "\u000c" },
-  { key = "K", mods = "Command", action = "ClearHistory" },
+  { key = "L", mods = "Command", chars = "\u000c" },
+  { key = "L", mods = "Command", action = "ClearHistory" },
 ]
 
 # ---------------------------------------------------------------------------
