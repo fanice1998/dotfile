@@ -11,9 +11,10 @@
 theme = "transparent"
 
 [editor]
+true-color = true                # catppuccin / transparent 需要 24-bit 色
 # 設定行號顯示
 line-number = "relative"         # "relative"(相對行號), "absolute"(絕對行號)
-mouse = false                    # 滑鼠
+mouse = true                    # 滑鼠
 auto-completion = true           # 啟用自動完成的自動彈出功能
 auto-format = true               # 儲存時自動格式化
 auto-info = true                 # 是否顯示資訊框
@@ -61,3 +62,19 @@ select = "underline"
 # "disable", "hint", "info", "warning", "error"
 cursor-line = "hint"
 other-lines = "error"
+
+# >>> helix-steel-plugins
+# 由 install-plugins.sh 寫入，請用該腳本更新
+[keys.normal]
+"-" = ":oil"
+"\\" = ":streal-open"
+
+[keys.normal.space]
+e = ":forest-open"
+t = ":open-term"
+T = ":kill-active-terminal"
+"," = ":recentf-open-files"
+
+[keys.select]
+"\\" = ":streal-open"
+# <<< helix-steel-plugins
