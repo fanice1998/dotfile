@@ -68,12 +68,24 @@ other-lines = "error"
 [keys.normal]
 "-" = ":oil"
 "\\" = ":streal-open"
+C-d = ":half-page-down-smooth"
+C-u = ":half-page-up-smooth"
+pageup = ":page-up-smooth"
+pagedown = ":page-down-smooth"
 
 [keys.normal.space]
 e = ":forest-open"
 t = ":open-term"
 T = ":kill-active-terminal"
 "," = ":recentf-open-files"
+";" = ":trail-open"
+R = ":scooter"
+
+[keys.normal.g]
+"/" = ":flash"
+
+[keys.select.g]
+"/" = ":flash"
 
 [keys.select]
 "\\" = ":streal-open"

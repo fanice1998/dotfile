@@ -333,12 +333,13 @@ install_one() {
 }
 
 default_shell() {
-  if [ -x /bin/zsh ]; then
-    printf '%s\n' /bin/zsh
-    return 0
-  fi
+  # Termux keeps zsh in $PREFIX/bin, not /bin/zsh.
   if have zsh; then
     command -v zsh
+    return 0
+  fi
+  if [ -x /bin/zsh ]; then
+    printf '%s\n' /bin/zsh
     return 0
   fi
   if [ -x /bin/bash ]; then
