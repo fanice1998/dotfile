@@ -30,29 +30,57 @@ autoload -U history-search-end
 zle -N history-beginning-search-backward-end history-search-end
 zle -N history-beginning-search-forward-end history-search-end
 
+# EDITOR=nvim 含有 vi，zsh 會選 viins；寫死避免以後 EDITOR 不含 vi 時跑掉
+bindkey -v
+
 # 上下鍵搜尋指令歷史紀錄
-bindkey '^[[A' history-beginning-search-backward-end
-bindkey '^[[B' history-beginning-search-forward-end
-bindkey '^[0A' history-beginning-search-backward-end
-bindkey '^[0B' history-beginning-search-forward-end
+# 一般模式是 Esc [ A/B；應用游標模式是 Esc O A/B（字母 O）
+bindkey -M viins '^[[A' history-beginning-search-backward-end
+bindkey -M viins '^[[B' history-beginning-search-forward-end
+bindkey -M viins '^[OA' history-beginning-search-backward-end
+bindkey -M viins '^[OB' history-beginning-search-forward-end
 
-# Ctrl + Left / Right 以 "單字" 為單位移動
-bindkey '^[[1;5D' backward-word   # Ctrl + ←
-bindkey '^[[1;5C' forward-word    # Ctrl + →
-bindkey '^[0D' backward-word      # Ctrl + ←
-bindkey '^[0C' forward-word       # Ctrl + →
+# Home / End
+bindkey -M viins '^[[H'  beginning-of-line
+bindkey -M viins '^[[1~' beginning-of-line
+bindkey -M viins '^[OH'  beginning-of-line
+bindkey -M vicmd '^[[H'  vi-beginning-of-line
+bindkey -M vicmd '^[[1~' vi-beginning-of-line
+bindkey -M vicmd '^[OH'  vi-beginning-of-line
+bindkey -M viins '^[[F'  end-of-line
+bindkey -M viins '^[[4~' end-of-line
+bindkey -M viins '^[OF'  end-of-line
+bindkey -M vicmd '^[[F'  vi-end-of-line
+bindkey -M vicmd '^[[4~' vi-end-of-line
+bindkey -M vicmd '^[OF'  vi-end-of-line
 
-# Delete 鍵
-bindkey '^[[3~' delete-char
+# Ctrl / Alt + Left / Right，以 word 為單位移動
+bindkey -M viins '^[[1;5D' backward-word
+bindkey -M viins '^[[5D'   backward-word
+bindkey -M viins '^[[1;3D' backward-word
+bindkey -M viins '^[[1;5C' forward-word
+bindkey -M viins '^[[5C'   forward-word
+bindkey -M viins '^[[1;3C' forward-word
+bindkey -M vicmd '^[[1;5D' vi-backward-word
+bindkey -M vicmd '^[[5D'   vi-backward-word
+bindkey -M vicmd '^[[1;3D' vi-backward-word
+bindkey -M vicmd '^[[1;5C' vi-forward-word
+bindkey -M vicmd '^[[5C'   vi-forward-word
+bindkey -M vicmd '^[[1;3C' vi-forward-word
 
-# Ctrl + Backspace 刪除前一個單字
-bindkey '^H' backward-kill-word
-bindkey '^[[3;5~' backward-kill-word
+# Delete / Ctrl+Delete / Ctrl+Backspace / Alt+Backspace
+bindkey -M viins '^[[3~' delete-char
+bindkey -M vicmd '^[[3~' vi-delete-char
+bindkey -M viins '^[[3;5~' kill-word
+bindkey -M vicmd '^[[3;5~' kill-word
+bindkey -M viins '^H' backward-kill-word
+bindkey -M vicmd '^H' vi-backward-kill-word
+bindkey -M viins '^[[127;5u' backward-kill-word
+bindkey -M vicmd '^[[127;5u' vi-backward-kill-word
+bindkey -M viins '^[^?' backward-kill-word
+bindkey -M vicmd '^[^?' vi-backward-kill-word
 
-# Alt + Backspace 刪除前一個單字
-bindkey '^[^?' backward-kill-word
-
-bindkey '^[[Z' reverse-menu-complete               # Shift+Tab 反向補全
+bindkey -M viins '^[[Z' reverse-menu-complete
 
 # ===== 常用 alias =====
 alias ll='ls -lah --color=auto'
