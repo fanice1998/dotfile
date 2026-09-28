@@ -1,62 +1,121 @@
 #!/bin/bash
 # =============================================
-# Go 最新版自動安裝腳本（Linux amd64）
-# 使用方式：sudo bash install_go.sh
+# Go 最新版自動安裝腳本
+# 使用方式：bash install_go.sh
+# /usr/local 不可寫時，只對安裝步驟使用 sudo。
+# shell 設定寫入原本使用者的家目錄，避免 sudo 把
+# PATH 寫進 /root，或把 /usr/local/go 留成 root 擁有。
 # =============================================
 
-set -e  # 發生錯誤立即停止
+set -euo pipefail
 
-# 1. 檢查是否為 root
-if [ "$EUID" -ne 0 ]; then
-    echo "❌ 請使用 sudo 執行此腳本！"
-    echo "正確用法：sudo bash install_go.sh"
+if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+    owner="$SUDO_USER"
+    owner_home="$(awk -F: -v u="$SUDO_USER" '$1==u {print $6; exit}' /etc/passwd)"
+else
+    owner="$(id -un)"
+    owner_home="$HOME"
+fi
+
+if [ -z "$owner_home" ] || [ ! -d "$owner_home" ]; then
+    echo "❌ 找不到 ${owner} 的家目錄，無法寫入 shell 設定"
     exit 1
 fi
 
+need_root=0
+if [ ! -w /usr/local ] || { [ -e /usr/local/go ] && [ ! -w /usr/local/go ]; }; then
+    need_root=1
+fi
+
+elevate() {
+    if [ "$(id -u)" -eq 0 ] || [ "$need_root" -eq 0 ]; then
+        "$@"
+    else
+        if ! command -v sudo >/dev/null 2>&1; then
+            echo "❌ 沒有寫入 /usr/local 的權限，而且找不到 sudo"
+            exit 1
+        fi
+        sudo "$@"
+    fi
+}
+
+case "$(uname -m)" in
+    x86_64|amd64) goarch=amd64 ;;
+    aarch64|arm64) goarch=arm64 ;;
+    armv6l|armv7l) goarch=armv6l ;;
+    i386|i686) goarch=386 ;;
+    *)
+        echo "❌ 不支援的架構：$(uname -m)"
+        exit 1
+        ;;
+esac
+
 echo "開始安裝最新版 Go ..."
 
-# 2. 取得最新版本（官方端點）
+# 取得最新版本（官方端點）
 echo "📡 正在取得最新版本號..."
-version=$(curl -s https://go.dev/VERSION?m=text | head -1)
-echo "✅ 最新版本：$version"
+version_text="$(curl -fsSL https://go.dev/VERSION?m=text)"
+version="${version_text%%$'\n'*}"
+version="${version%%$'\r'*}"
+echo "✅ 最新版本：${version}（linux-${goarch}）"
 
-download_url="https://go.dev/dl/${version}.linux-amd64.tar.gz"
-filename="${version}.linux-amd64.tar.gz"
+filename="${version}.linux-${goarch}.tar.gz"
+download_url="https://go.dev/dl/${filename}"
+workdir="$(mktemp -d)"
+trap 'rm -rf "$workdir"' EXIT
 
-# 3. 移除舊版 Go（如果存在）
-if command -v go &> /dev/null; then
-    current_ver=$(go version | awk '{print $3}')
-    echo "⚠️  偵測到已安裝：$current_ver"
+# 移除舊版 Go（目錄在但不在 PATH 上時也要清掉）
+if [ -d /usr/local/go ]; then
+    echo "⚠️  偵測到已安裝：/usr/local/go"
     echo "🗑️  正在移除舊版 /usr/local/go ..."
-    rm -rf /usr/local/go
+    elevate rm -rf /usr/local/go
 fi
 
-# 4. 下載最新版
-echo "⬇️  下載中：$download_url"
-curl -fLO "$download_url"   # -f 失敗就停止，-L 跟隨重定向，-O 自動命名
+# 下載到暫存目錄，避免在目前目錄留下 root 擁有的壓縮檔
+echo "⬇️  下載中：${download_url}"
+curl -fL "$download_url" -o "${workdir}/${filename}"
 
-# 5. 解壓縮
 echo "📦 解壓縮到 /usr/local/go ..."
-tar -C /usr/local -xzf "$filename"
+elevate tar -C /usr/local -xzf "${workdir}/${filename}"
 
-# 6. 設定永久 PATH（支援 bash / zsh）
-echo "🔧 設定環境變數..."
-echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.bashrc"
-if [ -f "$HOME/.zshrc" ]; then
-    echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.zshrc"
+go_owner="$(stat -c '%U' /usr/local/go)"
+if [ "$go_owner" != "$owner" ]; then
+    echo "🔧 將 /usr/local/go 擁有者改為 ${owner} ..."
+    elevate chown -R "${owner}:$(id -gn "$owner")" /usr/local/go
 fi
 
-# 7. 立即生效（當前 shell）
-export PATH=$PATH:/usr/local/go/bin
+# 設定永久 PATH。sudo 時寫入原使用者的 rc，不寫 /root。
+echo "🔧 設定環境變數..."
+path_line='export PATH="$PATH:/usr/local/go/bin"'
 
-# 8. 清理下載檔（可選）
-rm -f "$filename"
+append_rc() {
+    local rc="$1"
+    if [ -f "$rc" ] && grep -qF '/usr/local/go/bin' "$rc"; then
+        echo "ℹ️  PATH 已設定：${rc}"
+        return 0
+    fi
+    local created=0
+    if [ ! -e "$rc" ]; then
+        created=1
+    fi
+    printf '\n%s\n' "$path_line" >> "$rc"
+    if [ "$created" -eq 1 ] && [ "$(id -u)" -eq 0 ] && [ "$owner" != "root" ]; then
+        chown "${owner}:$(id -gn "$owner")" "$rc"
+    fi
+    echo "✅ 已寫入 ${rc}"
+}
 
-# 9. 最終驗證
+append_rc "${owner_home}/.bashrc"
+if [ -f "${owner_home}/.zshrc" ]; then
+    append_rc "${owner_home}/.zshrc"
+fi
+
+export PATH="/usr/local/go/bin:${PATH}"
+
 echo ""
 echo "🎉 安裝完成！"
 go version
 
 echo ""
-echo "✅ 請重新開啟終端機，或執行：source ~/.bashrc"
+echo "✅ 請重新開啟終端機，或執行：source ${owner_home}/.bashrc"
 echo "   之後就可以直接使用 go 指令了！"
