@@ -68,6 +68,9 @@ usage() {
                      工作區有未提交的修改時不會重置，會略過更新並繼續編譯
   HELIX_INSTALL_DEPS 設為 1 時，macOS / Linux 也會代為安裝缺少的編譯依賴
                      Termux 一律用 pkg 安裝，不必設這個變數
+  CARGO_BUILD_JOBS   平行編譯數。未設定時依記憶體自動限制，避免把記憶體吃光
+  CARGO_PROFILE_RELEASE_CODEGEN_UNITS
+                     未設定且記憶體小於 12 GiB 時，腳本會設成 1
 
 編譯依賴的安裝指令:
   macOS           brew install …
@@ -395,9 +398,82 @@ clone_helix() {
   fi
 }
 
+mem_total_kib() {
+  local kib="" bytes
+  if [ -r /proc/meminfo ]; then
+    kib="$(awk '/^MemTotal:/ {print $2; exit}' /proc/meminfo)"
+  fi
+  if [ -z "$kib" ] && have sysctl; then
+    bytes="$(sysctl -n hw.memsize 2>/dev/null || true)"
+    if [ -n "$bytes" ]; then
+      kib=$((bytes / 1024))
+    fi
+  fi
+  printf '%s\n' "${kib:-0}"
+}
+
+cpu_count() {
+  local n=""
+  if have nproc; then
+    n="$(nproc 2>/dev/null || true)"
+  fi
+  if [ -z "$n" ] && have getconf; then
+    n="$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)"
+  fi
+  if [ -z "$n" ] && have sysctl; then
+    n="$(sysctl -n hw.ncpu 2>/dev/null || true)"
+  fi
+  case "$n" in
+    '' | *[!0-9]*) n=1 ;;
+  esac
+  if [ "$n" -lt 1 ]; then
+    n=1
+  fi
+  printf '%s\n' "$n"
+}
+
+# cargo 預設用全部 CPU。steel / helix-term 一個 rustc 就能吃掉數 GiB，
+# 核心多、記憶體少的機器（例如 6 GiB、18 執行緒）會被系統殺掉。
+limit_cargo_parallelism() {
+  local kib jobs cpus
+  kib="$(mem_total_kib)"
+  cpus="$(cpu_count)"
+  if [ -n "${CARGO_BUILD_JOBS:-}" ]; then
+    jobs="$CARGO_BUILD_JOBS"
+    log "沿用 CARGO_BUILD_JOBS=${jobs}"
+  else
+    if [ "$kib" -lt $((8 * 1024 * 1024)) ]; then
+      jobs=1
+    elif [ "$kib" -lt $((16 * 1024 * 1024)) ]; then
+      jobs=2
+    else
+      jobs=$(((kib / 1024 - 2048) / 3072))
+      if [ "$jobs" -lt 1 ]; then
+        jobs=1
+      fi
+      if [ "$jobs" -gt "$cpus" ]; then
+        jobs=$cpus
+      fi
+    fi
+    export CARGO_BUILD_JOBS="$jobs"
+  fi
+  if [ -z "${CARGO_PROFILE_RELEASE_CODEGEN_UNITS:-}" ] && [ "$kib" -lt $((12 * 1024 * 1024)) ]; then
+    export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+  fi
+  if [ "$kib" -gt 0 ]; then
+    log "編譯平行度 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS}（記憶體 $((kib / 1024)) MiB，CPU ${cpus}）"
+  else
+    log "編譯平行度 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS}"
+  fi
+  if [ -n "${CARGO_PROFILE_RELEASE_CODEGEN_UNITS:-}" ]; then
+    log "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=${CARGO_PROFILE_RELEASE_CODEGEN_UNITS}"
+  fi
+}
+
 build_helix_steel() {
   ensure_cargo_env
   mkdir -p "$CARGO_TARGET_DIR"
+  limit_cargo_parallelism
   log "編譯 Helix Steel（steel + forge + hx，時間可能較長）"
   log "CARGO_TARGET_DIR=$CARGO_TARGET_DIR"
   (
