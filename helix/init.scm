@@ -18,7 +18,7 @@
 (forest-set-style! 'snacks)
 
 (require "steel-pty/term.scm")
-(set-default-shell! "/bin/zsh")
+(set-default-shell! "/usr/sbin/zsh")
 
 (require "helix-file-watcher/file-watcher.scm")
 (spawn-watcher)
