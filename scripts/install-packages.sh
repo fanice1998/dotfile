@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 在 macOS、Fedora、Android Termux 上安裝日常套件，項目可勾選。
+# 在 macOS、Fedora、Debian / Ubuntu、Android Termux 上安裝日常套件，項目可勾選。
 #
 # 用法:
 #   ./install-packages.sh                 方向鍵移動、空白鍵勾選、Enter 安裝
@@ -13,12 +13,14 @@
 #
 # Bash 3.2（macOS /bin/bash）可用。
 # 新增項目時改下面的 CATALOG。欄位用 | 分隔:
-#   id|群組|預設(1/0)|檢查的指令|mac|fedora|termux|說明
+#   id|群組|預設(1/0)|檢查的指令|mac|fedora|debian|termux|說明
+# debian 欄給 Debian、Ubuntu，以及 ID_LIKE 是它們的發行版（Linux Mint、Pop!_OS…）。
 # 預設不含 alacritty、fish、fisher、python、go、rust、node、make、cmake。
 # 平台欄位:
 #   套件名稱（可多個，空白分隔）
 #   cask:名稱     只給 macOS，走 brew install --cask
 #   -             這個平台用腳本裡的專用安裝（rustup、nvm、官方二進位…）
+#                 Debian 上 eza、fastfetch、lazygit 是 apt 有就用 apt，沒有才抓 GitHub 版本
 #   none          這個平台不裝
 
 set -euo pipefail
@@ -65,6 +67,12 @@ is_termux() {
   return 1
 }
 
+# Debian、Ubuntu，或 ID_LIKE 是它們的發行版。
+is_debian() {
+  [ -f /etc/os-release ] || return 1
+  grep -qE '^(ID|ID_LIKE)="?([a-z_]+ )*(debian|ubuntu)( |"|$)' /etc/os-release
+}
+
 is_fedora() {
   if [ -f /etc/fedora-release ]; then
     return 0
@@ -75,17 +83,21 @@ is_fedora() {
   return 1
 }
 
-# termux | macos | fedora
+# termux | macos | fedora | debian
 # Termux 的 uname 是 Linux，要先判斷。
 os_kind() {
   if [ -n "${OS_KIND:-}" ]; then
     case "$OS_KIND" in
-      macos | fedora | termux)
+      macos | fedora | debian | termux)
         printf '%s\n' "$OS_KIND"
         return 0
         ;;
+      ubuntu)
+        printf 'debian\n'
+        return 0
+        ;;
       *)
-        die "OS_KIND 只能是 macos、fedora、termux"
+        die "OS_KIND 只能是 macos、fedora、debian（ubuntu）、termux"
         ;;
     esac
   fi
@@ -97,12 +109,14 @@ os_kind() {
       Linux)
         if is_fedora; then
           OS_KIND=fedora
+        elif is_debian; then
+          OS_KIND=debian
         else
-          die "只支援 macOS、Fedora、Android Termux"
+          die "只支援 macOS、Fedora、Debian / Ubuntu、Android Termux"
         fi
         ;;
       *)
-        die "只支援 macOS、Fedora、Android Termux（目前是 $(uname -s 2>/dev/null || echo unknown)）"
+        die "只支援 macOS、Fedora、Debian / Ubuntu、Android Termux（目前是 $(uname -s 2>/dev/null || echo unknown)）"
         ;;
     esac
   fi
@@ -111,35 +125,35 @@ os_kind() {
 
 CATALOG="$(
   cat <<'EOF'
-git|base|1|git|git|git|git|版本控制
-curl|base|1|curl|curl|curl|curl|下載檔案
-wget|base|1|wget|wget|wget|wget|另一個下載工具
-unzip|base|1|unzip|unzip|unzip|unzip|解 zip
-rsync|base|0|rsync|rsync|rsync|rsync|同步檔案
-zsh|shell|1|zsh|zsh|zsh|zsh|目前使用的 shell
-fish|shell|0|fish|fish|fish|fish|另一個 shell（repo 裡有設定）
-fisher|shell|0|fisher|-|-|-|fish 外掛管理，並裝好 fish_plugins 列的外掛
-fzf|shell|1|fzf|fzf|fzf|fzf|模糊搜尋（主題選單、fzf-tab）
-starship|shell|1|starship|starship|-|starship|跨 shell 提示字元
-eza|files|1|eza|eza|eza|eza|取代 ls（fish 的 ls alias）
-trash|files|1|trash|trash-cli|trash-cli|-|可復原的刪除（fish 的 rm alias）
-ripgrep|files|1|rg|ripgrep|ripgrep|ripgrep|快速搜尋檔案內容
-fd|files|1|fd|fd|fd-find|fd|快速找檔案
-bat|files|1|bat|bat|bat|bat|帶語法高亮的 cat
-jq|files|1|jq|jq|jq|jq|處理 JSON
-neovim|edit|1|nvim|neovim|neovim|neovim|編輯器（EDITOR=nvim）
-zellij|edit|1|zellij|zellij|-|zellij|終端機工作區
-fastfetch|edit|1|fastfetch|fastfetch|fastfetch|fastfetch|系統資訊
-lazygit|edit|1|lazygit|lazygit|lazygit|lazygit|git 的終端介面
-alacritty|edit|0|alacritty|cask:alacritty|alacritty|none|終端機（repo 裡有設定）
-python|lang|0|python3|python|python3 python3-pip|python python-pip|Python 3 與 pip
-go|lang|0|go|go|-|golang|Go（Fedora 走 scripts/install_go.sh）
-rust|lang|0|rustc|-|-|rust|Rust（macOS / Fedora 用 rustup）
-node|lang|0|node|node|-|nodejs|Node.js（Fedora 用 nvm）
-make|build|0|make|-|make|make|編譯用 make
-cmake|build|0|cmake|cmake|cmake|cmake|編譯用 cmake
-compiler|build|0|cc|-|gcc gcc-c++|clang|C/C++ 編譯器
-pkg-config|build|0|pkg-config|pkg-config|pkgconf-pkg-config|pkg-config|編譯時找函式庫
+git|base|1|git|git|git|git|git|版本控制
+curl|base|1|curl|curl|curl|curl|curl|下載檔案
+wget|base|1|wget|wget|wget|wget|wget|另一個下載工具
+unzip|base|1|unzip|unzip|unzip|unzip|unzip|解 zip
+rsync|base|0|rsync|rsync|rsync|rsync|rsync|同步檔案
+zsh|shell|1|zsh|zsh|zsh|zsh|zsh|目前使用的 shell
+fish|shell|0|fish|fish|fish|fish|fish|另一個 shell（repo 裡有設定）
+fisher|shell|0|fisher|-|-|-|-|fish 外掛管理，並裝好 fish_plugins 列的外掛
+fzf|shell|1|fzf|fzf|fzf|fzf|fzf|模糊搜尋（主題選單、fzf-tab）
+starship|shell|1|starship|starship|-|-|starship|跨 shell 提示字元
+eza|files|1|eza|eza|eza|-|eza|取代 ls（fish 的 ls alias）
+trash|files|1|trash|trash-cli|trash-cli|trash-cli|-|可復原的刪除（fish 的 rm alias）
+ripgrep|files|1|rg|ripgrep|ripgrep|ripgrep|ripgrep|快速搜尋檔案內容
+fd|files|1|fd|fd|fd-find|fd-find|fd|快速找檔案
+bat|files|1|bat|bat|bat|bat|bat|帶語法高亮的 cat
+jq|files|1|jq|jq|jq|jq|jq|處理 JSON
+neovim|edit|1|nvim|neovim|neovim|-|neovim|編輯器（EDITOR=nvim）
+zellij|edit|1|zellij|zellij|-|-|zellij|終端機工作區
+fastfetch|edit|1|fastfetch|fastfetch|fastfetch|-|fastfetch|系統資訊
+lazygit|edit|1|lazygit|lazygit|lazygit|-|lazygit|git 的終端介面
+alacritty|edit|0|alacritty|cask:alacritty|alacritty|alacritty|none|終端機（repo 裡有設定）
+python|lang|0|python3|python|python3 python3-pip|python3 python3-pip python3-venv|python python-pip|Python 3 與 pip
+go|lang|0|go|go|-|-|golang|Go（Linux 走 scripts/install_go.sh）
+rust|lang|0|rustc|-|-|-|rust|Rust（macOS / Linux 用 rustup）
+node|lang|0|node|node|-|-|nodejs|Node.js（Linux 用 nvm）
+make|build|0|make|-|make|make|make|編譯用 make
+cmake|build|0|cmake|cmake|cmake|cmake|cmake|編譯用 cmake
+compiler|build|0|cc|-|gcc gcc-c++|build-essential|clang|C/C++ 編譯器
+pkg-config|build|0|pkg-config|pkg-config|pkgconf-pkg-config|pkg-config|pkg-config|編譯時找函式庫
 EOF
 )"
 
@@ -149,6 +163,7 @@ RECS=()
 CMDS=()
 MACS=()
 FEDORAS=()
+DEBIANS=()
 TERMUXS=()
 DESCS=()
 SELECTED=()
@@ -210,9 +225,9 @@ if set -q failed[1]
 end'
 
 load_catalog() {
-  local id group rec cmd mac fed tx desc
+  local id group rec cmd mac fed deb tx desc
   # read 在最後一行沒有換行時會回傳失敗，但仍有讀到內容。清掉 id，避免 EOF 時重複最後一筆。
-  while IFS='|' read -r id group rec cmd mac fed tx desc || [ -n "${id:-}" ]; do
+  while IFS='|' read -r id group rec cmd mac fed deb tx desc || [ -n "${id:-}" ]; do
     [ -n "${id:-}" ] || continue
     case "$id" in
       \#*) id="" ; continue ;;
@@ -223,6 +238,7 @@ load_catalog() {
     CMDS+=("$cmd")
     MACS+=("$mac")
     FEDORAS+=("$fed")
+    DEBIANS+=("$deb")
     TERMUXS+=("$tx")
     DESCS+=("$desc")
     SELECTED+=(0)
@@ -249,6 +265,7 @@ spec_at() {
   case "$OS" in
     macos) printf '%s\n' "${MACS[$i]}" ;;
     fedora) printf '%s\n' "${FEDORAS[$i]}" ;;
+    debian) printf '%s\n' "${DEBIANS[$i]}" ;;
     termux) printf '%s\n' "${TERMUXS[$i]}" ;;
   esac
 }
@@ -308,11 +325,13 @@ state_label() {
 special_label() {
   local id="$1"
   case "$OS:$id" in
-    fedora:starship) printf '%s\n' "官方安裝腳本 → ~/.local/bin" ;;
-    fedora:zellij) printf '%s\n' "GitHub 最新版 → ~/.local/bin" ;;
-    fedora:go) printf '%s\n' "scripts/install_go.sh" ;;
-    macos:rust | fedora:rust) printf '%s\n' "rustup" ;;
-    fedora:node) printf '%s\n' "nvm install ${NODE_MAJOR}" ;;
+    fedora:starship | debian:starship) printf '%s\n' "官方安裝腳本 → ~/.local/bin" ;;
+    fedora:zellij | debian:zellij) printf '%s\n' "GitHub 最新版 → ~/.local/bin" ;;
+    debian:neovim) printf '%s\n' "GitHub 最新版 → ~/.local/opt/nvim（apt 版本太舊）" ;;
+    debian:eza | debian:fastfetch | debian:lazygit) printf '%s\n' "apt 有就用 apt，沒有用 GitHub 最新版" ;;
+    fedora:go | debian:go) printf '%s\n' "scripts/install_go.sh" ;;
+    macos:rust | fedora:rust | debian:rust) printf '%s\n' "rustup" ;;
+    fedora:node | debian:node) printf '%s\n' "nvm install ${NODE_MAJOR}" ;;
     macos:compiler | macos:make) printf '%s\n' "xcode-select --install" ;;
     termux:trash) printf '%s\n' "pip install trash-cli" ;;
     *:fisher) printf '%s\n' "官方 fisher.fish，再 fisher install fish_plugins" ;;
@@ -333,7 +352,7 @@ method_label() {
 
 usage() {
   cat <<EOF
-在 macOS、Fedora、Android Termux 安裝日常套件。每次只裝你選的項目。
+在 macOS、Fedora、Debian / Ubuntu、Android Termux 安裝日常套件。每次只裝你選的項目。
 
 用法:
   ./install-packages.sh                 自己選要裝哪些（方向鍵 + 空白鍵）
@@ -370,15 +389,21 @@ usage() {
 平台:
   macOS    Homebrew（Alacritty 用 cask）。沒有 brew 會停下並附上安裝網址。
   Fedora   sudo dnf install。starship / zellij / Go / Rust / Node 用下面的方式。
+  Debian   sudo apt-get install（含 Ubuntu 與衍生版）。fd、bat 的指令名稱是 fdfind、batcat，
+           會在 ~/.local/bin 補上 fd、bat 連結。
   Termux   pkg install。trash 改走 pip。
 
 跟套件庫不同步、所以另外處理的項目:
-  starship   Fedora：官方腳本裝到 ~/.local/bin
-  zellij     Fedora：GitHub 最新版（發行版套件較舊）裝到 ~/.local/bin
-  go         Fedora：scripts/install_go.sh（官方 tarball）。Mac brew、Termux golang
-  rust       macOS / Fedora：rustup。Termux：pkg install rust
-  node       Fedora：nvm 安裝 Node ${NODE_MAJOR}。Mac brew、Termux nodejs
-  compiler   macOS：Xcode Command Line Tools。Fedora gcc、Termux clang
+  starship   Fedora / Debian：官方腳本裝到 ~/.local/bin
+  zellij     Fedora / Debian：GitHub 最新版（發行版套件較舊或沒有）裝到 ~/.local/bin
+  neovim     Debian：GitHub 最新版裝到 ~/.local/opt/nvim（apt 版本低於 LazyVim 要求的 0.11）
+  eza        Debian：apt 有就用 apt（Debian 13、Ubuntu 24.04），沒有用 GitHub 最新版
+  fastfetch  Debian：apt 有就用 apt，沒有用 GitHub 的 .deb
+  lazygit    Debian：apt 有就用 apt，沒有用 GitHub 最新版
+  go         Fedora / Debian：scripts/install_go.sh（官方 tarball）。Mac brew、Termux golang
+  rust       macOS / Fedora / Debian：rustup。Termux：pkg install rust
+  node       Fedora / Debian：nvm 安裝 Node ${NODE_MAJOR}。Mac brew、Termux nodejs
+  compiler   macOS：Xcode Command Line Tools。Fedora gcc、Debian build-essential、Termux clang
   fisher     各平台：官方 fisher.fish，再裝 fish_plugins 列的外掛。沒有 fish 會一併裝。
              設定目錄裡已有、但不是 fisher 裝的外掛檔案，會先移到 fisher-backup-*/ 再重裝
 
@@ -386,7 +411,7 @@ Helix Steel 不是發行版套件，請用 ../helix/install.sh。
 Zellij 狀態列插件請用 ../zellij/install.sh。
 
 環境變數:
-  OS_KIND      覆寫平台偵測（macos、fedora、termux），用來預覽別的平台
+  OS_KIND      覆寫平台偵測（macos、fedora、debian、termux），用來預覽別的平台
   NODE_MAJOR   Fedora 上 nvm 要裝的 Node 主版本（預設 ${NODE_MAJOR}）
   NVM_VERSION  nvm 版本（預設 ${NVM_VERSION}）
 EOF
@@ -831,12 +856,14 @@ select_names() {
 FORMULAS=()
 CASKS=()
 DNF_PKGS=()
+APT_PKGS=()
 TERMUX_PKGS=()
 SPECIAL_IDX=()
 SEEN_TOKENS=" "
 QUEUED=0
 SKIPPED=0
 XCODE_DONE=0
+APT_UPDATED=0
 
 add_token() {
   local token="$1"
@@ -852,6 +879,7 @@ add_token() {
       esac
       ;;
     fedora) DNF_PKGS+=("$token") ;;
+    debian) APT_PKGS+=("$token") ;;
     termux) TERMUX_PKGS+=("$token") ;;
   esac
 }
@@ -897,7 +925,7 @@ ensure_deps_for_specials() {
   for sidx in "${SPECIAL_IDX[@]}"; do
     id="${IDS[$sidx]}"
     case "$id" in
-      starship | zellij | go | rust | node) need_curl=1 ;;
+      starship | zellij | neovim | eza | fastfetch | lazygit | go | rust | node) need_curl=1 ;;
       fisher)
         need_curl=1
         need_fish=1
@@ -906,6 +934,59 @@ ensure_deps_for_specials() {
   done
   [ "$need_curl" -eq 0 ] || queue_dep curl "下載安裝需要 curl"
   [ "$need_fish" -eq 0 ] || queue_dep fish "fisher 需要 fish"
+}
+
+apt_update_once() {
+  [ "$APT_UPDATED" -eq 0 ] || return 0
+  APT_UPDATED=1
+  log "$(root_prefix)apt-get update"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    as_root apt-get update
+  fi
+}
+
+apt_install() {
+  apt_update_once
+  log "$(root_prefix)apt-get install -y $*"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
+  fi
+}
+
+# apt 套件庫有這個套件才回傳成功。
+# 先存起來再比對：直接接 grep -q 會提早關掉管線，apt-cache 收到 SIGPIPE，pipefail 就當成失敗。
+apt_has() {
+  local policy
+  apt_update_once
+  policy="$(apt-cache policy "$1" 2>/dev/null)" || return 1
+  case "$policy" in
+    *"Candidate: ("*) return 1 ;;
+    *"Candidate: "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Debian 的 fd、bat 指令叫 fdfind、batcat。這次有裝它們、又沒有 fd、bat 時，補上連結。
+link_debian_names() {
+  local pair want real pkg
+  for pair in fd:fdfind:fd-find bat:batcat:bat; do
+    IFS=: read -r want real pkg <<EOF
+$pair
+EOF
+    have "$want" && continue
+    case " ${APT_PKGS[*]} " in
+      *" $pkg "*) ;;
+      *) continue ;;
+    esac
+    ensure_local_bin
+    if [ "$DRY_RUN" -eq 1 ]; then
+      log "dry-run: ln -s $real ~/.local/bin/$want"
+      continue
+    fi
+    have "$real" || continue
+    ln -sf "$(command -v "$real")" "$HOME/.local/bin/$want"
+    log "已連結 ~/.local/bin/$want → $real"
+  done
 }
 
 as_root() {
@@ -959,6 +1040,13 @@ run_pkg_plan() {
       if [ "$DRY_RUN" -eq 0 ]; then
         as_root dnf install -y "${DNF_PKGS[@]}"
       fi
+      ;;
+    debian)
+      if [ "${#APT_PKGS[@]}" -eq 0 ]; then
+        return 0
+      fi
+      apt_install "${APT_PKGS[@]}"
+      link_debian_names
       ;;
     termux)
       if [ "${#TERMUX_PKGS[@]}" -eq 0 ]; then
@@ -1078,32 +1166,132 @@ install_starship() {
   curl -fsSL https://starship.rs/install.sh | sh -s -- "${args[@]}"
 }
 
-install_zellij_release() {
-  local arch triple url tmp bin
+# 印出 x86_64 或 aarch64；其他架構沒有預編版本。
+linux_arch() {
   case "$(uname -m)" in
-    x86_64 | amd64) triple="x86_64-unknown-linux-musl" ;;
-    aarch64 | arm64) triple="aarch64-unknown-linux-musl" ;;
-    *) die "沒有對應的 zellij 預編版本：$(uname -m)" ;;
+    x86_64 | amd64) printf 'x86_64\n' ;;
+    aarch64 | arm64) printf 'aarch64\n' ;;
+    *) return 1 ;;
   esac
-  url="https://github.com/zellij-org/zellij/releases/latest/download/zellij-${triple}.tar.gz"
-  log "安裝 zellij（${triple}）到 ~/.local/bin"
+}
+
+# 下載 tar.gz，把裡面叫 name 的執行檔裝到 ~/.local/bin。
+install_release_bin() {
+  local name="$1" url="$2" tmp bin
+  ensure_local_bin
   if [ "$DRY_RUN" -eq 1 ]; then
-    log "dry-run: curl -fL $url"
-    ensure_local_bin
+    log "dry-run: curl -fL $url → ~/.local/bin/$name"
     return 0
   fi
-  ensure_local_bin
   tmp="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$tmp'" EXIT
-  curl -fL --retry 3 --retry-delay 1 -o "$tmp/zellij.tar.gz" "$url"
-  tar -C "$tmp" -xzf "$tmp/zellij.tar.gz"
-  bin="$(find "$tmp" -type f -name zellij -print -quit)"
-  [ -n "$bin" ] || die "壓縮檔裡找不到 zellij"
-  install -m 755 "$bin" "$HOME/.local/bin/zellij"
+  curl -fL --retry 3 --retry-delay 1 -o "$tmp/release.tar.gz" "$url"
+  tar -C "$tmp" -xzf "$tmp/release.tar.gz"
+  bin="$(find "$tmp" -type f -name "$name" -print -quit)"
+  [ -n "$bin" ] || die "壓縮檔裡找不到 $name"
+  install -m 755 "$bin" "$HOME/.local/bin/$name"
   rm -rf "$tmp"
   trap - EXIT
-  log "已安裝 $("$HOME/.local/bin/zellij" --version 2>/dev/null || echo zellij)"
+  log "已安裝 ~/.local/bin/$name"
+}
+
+# GitHub 最新 release 的 tag，例如 v0.66.2。
+github_latest_tag() {
+  local url
+  url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest")" || return 1
+  printf '%s\n' "${url##*/}"
+}
+
+install_zellij_release() {
+  local arch
+  arch="$(linux_arch)" || die "沒有對應的 zellij 預編版本：$(uname -m)"
+  log "安裝 zellij（${arch}）到 ~/.local/bin"
+  install_release_bin zellij \
+    "https://github.com/zellij-org/zellij/releases/latest/download/zellij-${arch}-unknown-linux-musl.tar.gz"
+}
+
+# 整個目錄放在 ~/.local/opt/nvim（裡面有 runtime），~/.local/bin/nvim 連過去。
+install_neovim_release() {
+  local arch url tmp dest="$HOME/.local/opt/nvim"
+  arch="$(linux_arch)" || die "沒有對應的 neovim 預編版本：$(uname -m)"
+  [ "$arch" = "aarch64" ] && arch=arm64
+  url="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-${arch}.tar.gz"
+  log "安裝 neovim（${arch}）到 ~/.local/opt/nvim"
+  ensure_local_bin
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "dry-run: curl -fL $url → $dest，連結 ~/.local/bin/nvim"
+    return 0
+  fi
+  tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp'" EXIT
+  curl -fL --retry 3 --retry-delay 1 -o "$tmp/nvim.tar.gz" "$url"
+  tar -C "$tmp" -xzf "$tmp/nvim.tar.gz"
+  [ -x "$tmp/nvim-linux-${arch}/bin/nvim" ] || die "壓縮檔裡找不到 nvim"
+  mkdir -p "$HOME/.local/opt"
+  rm -rf "$dest"
+  mv "$tmp/nvim-linux-${arch}" "$dest"
+  ln -sf "$dest/bin/nvim" "$HOME/.local/bin/nvim"
+  rm -rf "$tmp"
+  trap - EXIT
+  log "已安裝 $("$HOME/.local/bin/nvim" --version 2>/dev/null | head -n 1)"
+}
+
+install_eza_debian() {
+  local arch
+  if apt_has eza; then
+    apt_install eza
+    return 0
+  fi
+  arch="$(linux_arch)" || die "沒有對應的 eza 預編版本：$(uname -m)"
+  log "apt 沒有 eza，改裝 GitHub 最新版"
+  install_release_bin eza \
+    "https://github.com/eza-community/eza/releases/latest/download/eza_${arch}-unknown-linux-gnu.tar.gz"
+}
+
+install_fastfetch_debian() {
+  local arch url tmp
+  if apt_has fastfetch; then
+    apt_install fastfetch
+    return 0
+  fi
+  arch="$(linux_arch)" || die "沒有對應的 fastfetch 預編版本：$(uname -m)"
+  [ "$arch" = "x86_64" ] && arch=amd64
+  url="https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-${arch}.deb"
+  log "apt 沒有 fastfetch，改裝 GitHub 的 .deb"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "dry-run: curl -fL $url，再 apt-get install 這個 .deb"
+    return 0
+  fi
+  tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp'" EXIT
+  curl -fL --retry 3 --retry-delay 1 -o "$tmp/fastfetch.deb" "$url"
+  # apt 用 _apt 使用者讀檔，mktemp 的目錄只有自己能讀。
+  chmod 755 "$tmp"
+  chmod 644 "$tmp/fastfetch.deb"
+  apt_install "$tmp/fastfetch.deb"
+  rm -rf "$tmp"
+  trap - EXIT
+}
+
+install_lazygit_debian() {
+  local arch tag
+  if apt_has lazygit; then
+    apt_install lazygit
+    return 0
+  fi
+  arch="$(linux_arch)" || die "沒有對應的 lazygit 預編版本：$(uname -m)"
+  [ "$arch" = "aarch64" ] && arch=arm64
+  log "apt 沒有 lazygit，改裝 GitHub 最新版"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    tag="<最新版>"
+  else
+    tag="$(github_latest_tag jesseduffield/lazygit)" || die "查不到 lazygit 最新版本"
+  fi
+  install_release_bin lazygit \
+    "https://github.com/jesseduffield/lazygit/releases/download/${tag}/lazygit_${tag#v}_linux_${arch}.tar.gz"
 }
 
 install_go() {
@@ -1195,11 +1383,15 @@ run_specials() {
   for sidx in "${SPECIAL_IDX[@]}"; do
     id="${IDS[$sidx]}"
     case "$OS:$id" in
-      fedora:starship) install_starship ;;
-      fedora:zellij) install_zellij_release ;;
-      fedora:go) install_go ;;
-      macos:rust | fedora:rust) install_rust ;;
-      fedora:node) install_node ;;
+      fedora:starship | debian:starship) install_starship ;;
+      fedora:zellij | debian:zellij) install_zellij_release ;;
+      debian:neovim) install_neovim_release ;;
+      debian:eza) install_eza_debian ;;
+      debian:fastfetch) install_fastfetch_debian ;;
+      debian:lazygit) install_lazygit_debian ;;
+      fedora:go | debian:go) install_go ;;
+      macos:rust | fedora:rust | debian:rust) install_rust ;;
+      fedora:node | debian:node) install_node ;;
       macos:compiler | macos:make) install_xcode_clt ;;
       termux:trash) install_trash_pip ;;
       *:fisher) install_fisher ;;
@@ -1213,6 +1405,7 @@ install_selected() {
   FORMULAS=()
   CASKS=()
   DNF_PKGS=()
+  APT_PKGS=()
   TERMUX_PKGS=()
   SPECIAL_IDX=()
   SEEN_TOKENS=" "
