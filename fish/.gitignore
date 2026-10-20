@@ -1,0 +1,10 @@
+# 每台機器各自的 universal 變數（含 PATH、fisher 的安裝紀錄），不進 repo。
+fish_variables
+# fisher 裝的外掛。外掛清單在 fish_plugins，用 scripts/install-packages.sh fisher 安裝。
+functions/fisher.fish
+completions/fisher.fish
+functions/_nvm_*.fish
+functions/nvm.fish
+conf.d/nvm.fish
+completions/nvm.fish
+fisher-backup-*/

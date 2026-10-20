@@ -185,7 +185,13 @@ if test -e $dir/fish_plugins
 end
 set -l bak $dir/fisher-backup-(date +%Y%m%d%H%M%S)
 set -l failed
+set -l before (string lower -- $_fisher_plugins)
 for p in $want
+    # 新裝的 fisher 會順手裝好 fish_plugins 列的外掛，這次才裝上的就不必再裝一次。
+    set -l lp (string lower -- $p)
+    if not contains -- $lp $before; and contains -- $lp (string lower -- $_fisher_plugins)
+        continue
+    end
     set -l out (fisher install $p 2>&1)
     printf "%s\n" $out
     string match -q "*Cannot install*" -- $out; or continue
