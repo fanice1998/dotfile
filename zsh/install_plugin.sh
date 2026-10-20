@@ -5,6 +5,11 @@ if [ ! -d ~/.zsh/fzf-tab ]; then
   git clone https://github.com/Aloxaf/fzf-tab ~/.zsh/fzf-tab
 fi
 
+# Autosuggestions
+if [ ! -d ~/.zsh/zsh-autosuggestions ]; then
+  git clone https://github.com/zsh-users/zsh-autosuggestions ~/.zsh/zsh-autosuggestions
+fi
+
 # Syntax highlighting
 if [ ! -d ~/.zsh/zsh-syntax-highlighting ]; then
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ~/.zsh/zsh-syntax-highlighting
