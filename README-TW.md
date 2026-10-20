@@ -1,2 +1,7 @@
 - eza (Beautiful ls)
   - Fedora `eza`
+- fisher (fish 外掛管理)
+  - 外掛清單在 `fish/fish_plugins`，fisher 和外掛本身不進 repo
+  - 安裝: `./scripts/install-packages.sh fisher`（沒有 fish 會一併裝）
+  - 設定目錄裡已有、但不是 fisher 裝的外掛檔案，會先移到 `~/.config/fish/fisher-backup-*/` 再重裝
+  - 新增外掛: `fisher install <plugin>`，會自動寫回 `fish_plugins`，記得 commit
