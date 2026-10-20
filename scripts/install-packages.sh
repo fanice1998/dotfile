@@ -2,7 +2,8 @@
 # 在 macOS、Fedora、Android Termux 上安裝日常套件，項目可勾選。
 #
 # 用法:
-#   ./install-packages.sh                 列出套件，一次輸入多個編號來勾選
+#   ./install-packages.sh                 方向鍵移動、空白鍵勾選、Enter 安裝
+#   ./install-packages.sh --simple        改用輸入編號勾選（終端機不支援方向鍵時）
 #   ./install-packages.sh --list          列出項目與這個平台的安裝方式
 #   ./install-packages.sh --default       只裝預設項目
 #   ./install-packages.sh --all           安裝這個平台有的全部項目
@@ -13,7 +14,7 @@
 # Bash 3.2（macOS /bin/bash）可用。
 # 新增項目時改下面的 CATALOG。欄位用 | 分隔:
 #   id|群組|預設(1/0)|檢查的指令|mac|fedora|termux|說明
-# 預設不含 alacritty、fish、python、go、rust、node、make、cmake。
+# 預設不含 alacritty、fish、fisher、python、go、rust、node、make、cmake。
 # 平台欄位:
 #   套件名稱（可多個，空白分隔）
 #   cask:名稱     只給 macOS，走 brew install --cask
@@ -27,6 +28,7 @@ NVM_VERSION="${NVM_VERSION:-v0.40.8}"
 
 DRY_RUN=0
 FORCE=0
+SIMPLE=0
 TOUCHED_RC=0
 
 script_dir() {
@@ -116,6 +118,7 @@ unzip|base|1|unzip|unzip|unzip|unzip|解 zip
 rsync|base|0|rsync|rsync|rsync|rsync|同步檔案
 zsh|shell|1|zsh|zsh|zsh|zsh|目前使用的 shell
 fish|shell|0|fish|fish|fish|fish|另一個 shell（repo 裡有設定）
+fisher|shell|0|fisher|-|-|-|fish 外掛管理，並裝好 fish_plugins 列的外掛
 fzf|shell|1|fzf|fzf|fzf|fzf|模糊搜尋（主題選單、fzf-tab）
 starship|shell|1|starship|starship|-|starship|跨 shell 提示字元
 eza|files|1|eza|eza|eza|eza|取代 ls（fish 的 ls alias）
@@ -149,6 +152,56 @@ FEDORAS=()
 TERMUXS=()
 DESCS=()
 SELECTED=()
+# 每項的狀態: installed | missing | none（這個平台沒有）。畫選單時用，避免每次重畫都去檢查。
+STATE=()
+
+# fisher 自己有裝好、而且 fish_plugins 列的外掛都已由 fisher 管理，才算裝好。
+FISHER_CHECK='
+functions -q fisher; or exit 1
+set -l have (string lower -- $_fisher_plugins)
+contains jorgebucaran/fisher $have; or exit 1
+test -e $__fish_config_dir/fish_plugins; or exit 0
+for p in (string match -rv "^\s*(#.*)?\$" <$__fish_config_dir/fish_plugins | string trim | string lower)
+    contains -- $p $have; or exit 1
+end'
+
+# 先裝 fisher，再逐一安裝 fish_plugins 列的外掛。
+# 從 dotfile 複製過來的外掛檔案沒有 fisher 的紀錄，fisher 會回報 conflicting files 而不安裝。
+# 碰到這種情況就把那些檔案移到備份目錄，再裝一次，讓 fisher 接手管理。
+FISHER_INSTALL='
+set -l dir $__fish_config_dir
+if not functions -q fisher
+    curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source
+    or begin
+        echo "fisher: 下載失敗" >&2
+        exit 1
+    end
+end
+set -l want jorgebucaran/fisher
+if test -e $dir/fish_plugins
+    for p in (string match -rv "^\s*(#.*)?\$" <$dir/fish_plugins | string trim)
+        contains -- (string lower -- $p) (string lower -- $want); or set -a want $p
+    end
+end
+set -l bak $dir/fisher-backup-(date +%Y%m%d%H%M%S)
+set -l failed
+for p in $want
+    set -l out (fisher install $p 2>&1)
+    printf "%s\n" $out
+    string match -q "*Cannot install*" -- $out; or continue
+    for f in (string match -rg "^\s+(/.+)\$" -- $out)
+        set -l dest $bak/(string replace -- "$dir/" "" $f)
+        mkdir -p (dirname $dest); and mv $f $dest
+    end
+    echo "==> 原本的檔案移到 $bak，重新安裝 $p"
+    set out (fisher install $p 2>&1)
+    printf "%s\n" $out
+    string match -q "*Cannot install*" -- $out; and set -a failed $p
+end
+if set -q failed[1]
+    echo "fisher: 這些外掛沒有裝好: $failed" >&2
+    exit 1
+end'
 
 load_catalog() {
   local id group rec cmd mac fed tx desc
@@ -215,9 +268,34 @@ is_installed() {
     pkg-config)
       have pkg-config || have pkgconf
       ;;
+    fisher)
+      # 一般啟動才會讀 universal 變數與 functions 目錄；config.fish 的錯誤訊息不要印出來。
+      have fish && fish -c "$FISHER_CHECK" >/dev/null 2>&1
+      ;;
     *)
       have "${CMDS[$i]}"
       ;;
+  esac
+}
+
+refresh_states() {
+  local i
+  for i in "${!IDS[@]}"; do
+    if ! is_available "$i"; then
+      STATE[$i]=none
+    elif is_installed "$i"; then
+      STATE[$i]=installed
+    else
+      STATE[$i]=missing
+    fi
+  done
+}
+
+state_label() {
+  case "${STATE[$1]}" in
+    none) printf '不支援\n' ;;
+    installed) printf '已安裝\n' ;;
+    *) printf '未安裝\n' ;;
   esac
 }
 
@@ -231,6 +309,7 @@ special_label() {
     fedora:node) printf '%s\n' "nvm install ${NODE_MAJOR}" ;;
     macos:compiler | macos:make) printf '%s\n' "xcode-select --install" ;;
     termux:trash) printf '%s\n' "pip install trash-cli" ;;
+    *:fisher) printf '%s\n' "官方 fisher.fish，再 fisher install fish_plugins" ;;
     *) printf '%s\n' "專用安裝" ;;
   esac
 }
@@ -251,7 +330,8 @@ usage() {
 在 macOS、Fedora、Android Termux 安裝日常套件。每次只裝你選的項目。
 
 用法:
-  ./install-packages.sh                 自己選要裝哪些
+  ./install-packages.sh                 自己選要裝哪些（方向鍵 + 空白鍵）
+  ./install-packages.sh --simple        改用輸入編號勾選
   ./install-packages.sh --list          列出 id、狀態、這個平台的裝法
   ./install-packages.sh --default       只裝預設項目裡還沒裝的
   ./install-packages.sh --all           安裝這個平台支援、且還沒裝的全部項目
@@ -259,24 +339,27 @@ usage() {
   ./install-packages.sh --dry-run fish  只印出會執行的指令
   ./install-packages.sh --force go      已安裝的也重做
 
-不帶參數時直接列出套件，不需要 fzf。
-一次輸入多個編號就會一起勾起，例如 7 20 22 或 7,20,22。
-再打一次同一個編號會取消。確認後輸入 d 才開始安裝。
-
-預設（--default，或清單裡輸入 a）不含:
-  alacritty、fish、python、go、rust、node、make、cmake
-  另外也不含 rsync、compiler、pkg-config。這些在清單裡照樣可以勾。
-
-清單:
-  7 20 22     同時勾這三個
-  fish go     也可以打 id
-  a           改勾預設項目
+不帶參數時開啟勾選清單，一開始已勾好「預設項目裡還沒裝的」，直接按 Enter 就能裝。
+  ↑ ↓ / j k   移動
+  空白 / x    勾選或取消
+  a           改勾預設項目裡還沒裝的
   A           勾這個平台有的全部項目
   n           清空
+  Enter       開始安裝
+  q / Esc     取消
+  已安裝又被勾到時會略過。要重裝請加上 --force。
+
+--simple（或終端機不支援時）改用輸入編號:
+  7 20 22     同時切換這三個（也可以用逗號分開）
+  3-9         勾起 3 到 9
+  fish go     也可以打 id
+  a / A / n   同上
   d           開始安裝
   q           取消
-  已安裝又被勾到時會略過。要重裝請加上 --force。
-  機器上已經有 fzf 時，可以輸入 f 改用方向鍵多選。沒有 fzf 不必用這個。
+
+預設（--default，或清單裡按 a）不含:
+  alacritty、fish、fisher、python、go、rust、node、make、cmake
+  另外也不含 rsync、compiler、pkg-config。這些在清單裡照樣可以勾。
 
 平台:
   macOS    Homebrew（Alacritty 用 cask）。沒有 brew 會停下並附上安裝網址。
@@ -290,6 +373,8 @@ usage() {
   rust       macOS / Fedora：rustup。Termux：pkg install rust
   node       Fedora：nvm 安裝 Node ${NODE_MAJOR}。Mac brew、Termux nodejs
   compiler   macOS：Xcode Command Line Tools。Fedora gcc、Termux clang
+  fisher     各平台：官方 fisher.fish，再裝 fish_plugins 列的外掛。沒有 fish 會一併裝。
+             設定目錄裡已有、但不是 fisher 裝的外掛檔案，會先移到 fisher-backup-*/ 再重裝
 
 Helix Steel 不是發行版套件，請用 ../helix/install.sh。
 Zellij 狀態列插件請用 ../zellij/install.sh。
@@ -312,23 +397,221 @@ list_catalog() {
     else
       rec="-"
     fi
-    if ! is_available "$i"; then
-      state="沒有"
-    elif is_installed "$i"; then
-      state="已安裝"
-    else
-      state="未安裝"
-    fi
+    state="$(state_label "$i")"
     printf '%-12s %-6s %-8s %s\n' "${IDS[$i]}" "$rec" "$state" "$(method_label "$i")"
     printf '%-12s %-6s %-8s %s\n' "" "" "" "${DESCS[$i]}"
   done
 }
 
+# ---- 方向鍵勾選清單 ----
+
+TUI_ROWS=()
+TUI_TOP=0
+TUI_MSG=""
+
+tui_supported() {
+  [ -r /dev/tty ] && [ -w /dev/tty ] || return 1
+  case "${TERM:-dumb}" in
+    dumb | '') return 1 ;;
+  esac
+  stty -g </dev/tty >/dev/null 2>&1
+}
+
+term_lines() {
+  local size
+  size="$(stty size </dev/tty 2>/dev/null)" || size=""
+  size="${size%% *}"
+  case "$size" in
+    '' | *[!0-9]*) size="${LINES:-24}" ;;
+  esac
+  printf '%s\n' "$size"
+}
+
+# 清單的每一列：群組標題是 "g:群組"，項目是 IDS 的索引。
+tui_build_rows() {
+  local i last=""
+  TUI_ROWS=()
+  for i in "${!IDS[@]}"; do
+    if [ "${CATS[$i]}" != "$last" ]; then
+      last="${CATS[$i]}"
+      TUI_ROWS+=("g:$last")
+    fi
+    TUI_ROWS+=("$i")
+  done
+}
+
+# 從 row 往 step 方向找下一個項目列；找不到就留在原地。
+tui_step() {
+  local row="$1" step="$2" n="${#TUI_ROWS[@]}"
+  local r=$((row + step))
+  while [ "$r" -ge 0 ] && [ "$r" -lt "$n" ]; do
+    case "${TUI_ROWS[$r]}" in
+      g:*) r=$((r + step)) ;;
+      *)
+        printf '%s\n' "$r"
+        return 0
+        ;;
+    esac
+  done
+  printf '%s\n' "$row"
+}
+
+tui_draw() {
+  local cur="$1" lines view n r end row i mark rec state color pointer hl out count=0 picked=""
+  local esc=$'\033'
+  lines="$(term_lines)"
+  n="${#TUI_ROWS[@]}"
+  view=$((lines - 5))
+  [ "$view" -ge 3 ] || view=3
+  # 游標要在畫面內。往上捲時多露出一列，讓群組標題看得到。
+  if [ "$cur" -le "$TUI_TOP" ]; then
+    TUI_TOP=$((cur - 1))
+    [ "$TUI_TOP" -ge 0 ] || TUI_TOP=0
+  elif [ "$cur" -ge $((TUI_TOP + view)) ]; then
+    TUI_TOP=$((cur - view + 1))
+  fi
+  end=$((TUI_TOP + view))
+  [ "$end" -le "$n" ] || end="$n"
+
+  for i in "${!IDS[@]}"; do
+    if [ "${SELECTED[$i]}" = "1" ]; then
+      count=$((count + 1))
+      picked="$picked ${IDS[$i]}"
+    fi
+  done
+
+  out="${esc}[H${esc}[1m選擇要安裝的套件${esc}[0m  平台 $OS  ${esc}[2m* 是預設項目${esc}[0m${esc}[K"$'\n'
+  out="$out${esc}[2m↑↓/jk 移動  空白 勾選  a 預設  A 全部  n 清空  Enter 安裝  q 離開${esc}[0m${esc}[K"$'\n'
+  r="$TUI_TOP"
+  while [ "$r" -lt "$end" ]; do
+    row="${TUI_ROWS[$r]}"
+    case "$row" in
+      g:*)
+        out="$out${esc}[1;36m$(group_name "${row#g:}")${esc}[0m${esc}[K"$'\n'
+        ;;
+      *)
+        i="$row"
+        if [ "${SELECTED[$i]}" = "1" ]; then mark="x"; else mark=" "; fi
+        if [ "${RECS[$i]}" = "1" ]; then rec="*"; else rec=" "; fi
+        state="$(state_label "$i")"
+        case "${STATE[$i]}" in
+          installed) color="${esc}[32m" ;;
+          none) color="${esc}[2m" ;;
+          *) color="" ;;
+        esac
+        # 游標所在列反白；狀態的顏色會重設樣式，所以後面要再開一次反白。
+        if [ "$r" -eq "$cur" ]; then
+          pointer=">"
+          hl="${esc}[7m"
+        else
+          pointer=" "
+          hl=""
+        fi
+        out="$out$hl$(printf ' %s [%s] %s %-11s ' "$pointer" "$mark" "$rec" "${IDS[$i]}")"
+        out="$out$color$state${esc}[0m$hl  ${DESCS[$i]}${esc}[0m${esc}[K"$'\n'
+        ;;
+    esac
+    r=$((r + 1))
+  done
+  [ "$picked" ] || picked=" （還沒有）"
+  out="$out${esc}[K"$'\n'"已勾 $count 項:$picked${esc}[K"$'\n'
+  out="$out${esc}[33m$TUI_MSG${esc}[0m${esc}[K${esc}[J"
+  printf '%s' "$out"
+}
+
+tui_enter() {
+  # 切到替代畫面、隱藏游標、關掉自動換行（窄螢幕不會把一列擠成兩列）。
+  printf '\033[?1049h\033[?25l\033[?7l' >/dev/tty
+  trap 'tui_leave' EXIT
+  trap 'tui_leave; exit 130' INT TERM
+}
+
+tui_leave() {
+  printf '\033[?7h\033[?25h\033[?1049l' >/dev/tty
+}
+
+tui_toggle() {
+  local i="$1"
+  case "${STATE[$i]}" in
+    none)
+      TUI_MSG="${IDS[$i]} 在 $OS 沒有安裝方式"
+      return 0
+      ;;
+  esac
+  if [ "${SELECTED[$i]}" = "1" ]; then
+    SELECTED[$i]=0
+  else
+    SELECTED[$i]=1
+    if [ "${STATE[$i]}" = "installed" ] && [ "$FORCE" -eq 0 ]; then
+      TUI_MSG="${IDS[$i]} 已安裝，會略過。要重裝請加 --force"
+    fi
+  fi
+}
+
+tui_select() {
+  local cur key rest act i any
+  tui_build_rows
+  cur="$(tui_step -1 1)"
+  TUI_TOP=0
+  tui_enter
+  while true; do
+    tui_draw "$cur" >/dev/tty
+    TUI_MSG=""
+    key=""
+    IFS= read -rsn1 key </dev/tty || key=q
+    act=""
+    case "$key" in
+      $'\033')
+        rest=""
+        IFS= read -rsn2 -t 1 rest </dev/tty || true
+        case "$rest" in
+          '[A' | 'OA') act=up ;;
+          '[B' | 'OB') act=down ;;
+          '') act=quit ;;
+        esac
+        ;;
+      k) act=up ;;
+      j) act=down ;;
+      ' ' | x) act=toggle ;;
+      a) select_missing_recommended ;;
+      A) select_all ;;
+      n) select_none ;;
+      '') act=done ;;
+      q | Q) act=quit ;;
+    esac
+    case "$act" in
+      up) cur="$(tui_step "$cur" -1)" ;;
+      down) cur="$(tui_step "$cur" 1)" ;;
+      toggle) tui_toggle "${TUI_ROWS[$cur]}" ;;
+      done)
+        any=0
+        for i in "${!IDS[@]}"; do
+          [ "${SELECTED[$i]}" = "1" ] && any=1
+        done
+        if [ "$any" -eq 1 ]; then
+          break
+        fi
+        TUI_MSG="還沒勾任何項目。用空白鍵勾選，或按 q 離開"
+        ;;
+      quit)
+        tui_leave
+        trap - EXIT INT TERM
+        printf '已取消\n'
+        exit 0
+        ;;
+    esac
+  done
+  tui_leave
+  trap - EXIT INT TERM
+  print_checked
+}
+
+# ---- 輸入編號勾選（--simple，或終端機不支援方向鍵時） ----
+
 draw_menu() {
-  local i mark recmark state last_group=""
+  local i mark recmark last_group=""
   printf '\n平台: %s (%s)\n' "$OS" "$(uname -m 2>/dev/null || echo unknown)"
-  printf '星號是預設項目。現在勾到的才會裝。\n'
-  printf '已安裝的勾了也會略過，要重裝請加 --force。\n'
+  printf '星號是預設項目。現在勾到的才會裝。已安裝的勾了也會略過，要重裝請加 --force。\n'
   for i in "${!IDS[@]}"; do
     if [ "${CATS[$i]}" != "$last_group" ]; then
       last_group="${CATS[$i]}"
@@ -344,23 +627,13 @@ draw_menu() {
     else
       recmark=" "
     fi
-    if ! is_available "$i"; then
-      state="此平台沒有"
-    elif is_installed "$i"; then
-      state="已安裝"
-    else
-      state="未安裝"
-    fi
-    printf '  %2d [%s] %s %-12s %s  [%s]\n' \
-      "$((i + 1))" "$mark" "$recmark" "${IDS[$i]}" "${DESCS[$i]}" "$state"
+    printf '  %2d [%s] %s %-11s %s  %s\n' \
+      "$((i + 1))" "$mark" "$recmark" "${IDS[$i]}" "$(state_label "$i")" "${DESCS[$i]}"
   done
   printf '\n'
   print_checked
-  printf '一次勾多個：輸入編號，用空白或逗號分開，例如 7 20 22\n'
-  printf '再打一次同一個編號會取消。d 開始安裝，q 取消，a 改勾預設，n 清空\n'
-  if have fzf; then
-    printf '這台已經有 fzf，輸入 f 可改用方向鍵多選\n'
-  fi
+  printf '輸入編號切換勾選，例如 7 20 22；3-9 勾起一段；也可以打 id\n'
+  printf 'd 開始安裝  q 取消  a 改勾預設  A 全部  n 清空\n'
 }
 
 print_checked() {
@@ -413,7 +686,7 @@ select_all() {
   local i
   select_none
   for i in "${!IDS[@]}"; do
-    if is_available "$i"; then
+    if [ "${STATE[$i]}" != "none" ]; then
       SELECTED[$i]=1
     fi
   done
@@ -423,7 +696,7 @@ select_missing_recommended() {
   local i
   select_none
   for i in "${!IDS[@]}"; do
-    if [ "${RECS[$i]}" = "1" ] && is_available "$i" && ! is_installed "$i"; then
+    if [ "${RECS[$i]}" = "1" ] && [ "${STATE[$i]}" = "missing" ]; then
       SELECTED[$i]=1
     fi
   done
@@ -435,7 +708,7 @@ toggle_index() {
     warn "沒有編號 $((i + 1))"
     return 0
   fi
-  if ! is_available "$i"; then
+  if [ "${STATE[$i]}" = "none" ]; then
     warn "${IDS[$i]} 在 $OS 沒有對應安裝方式"
     return 0
   fi
@@ -446,9 +719,30 @@ toggle_index() {
   fi
 }
 
+# 3-9 這種範圍一律勾起（不是切換），這個平台沒有的項目直接跳過。
+select_range() {
+  local lo="$1" hi="$2" n
+  if [ "$lo" -gt "$hi" ]; then
+    n="$lo"
+    lo="$hi"
+    hi="$n"
+  fi
+  for ((n = lo; n <= hi; n++)); do
+    if [ "$n" -ge 1 ] && [ "$n" -le "${#IDS[@]}" ] && [ "${STATE[$((n - 1))]}" != "none" ]; then
+      SELECTED[$((n - 1))]=1
+    fi
+  done
+}
+
 toggle_token() {
   local tok="$1" i
   case "$tok" in
+    [0-9]*-[0-9]*)
+      case "${tok%-*}${tok#*-}" in
+        *[!0-9]*) warn "看不懂的範圍: $tok" ;;
+        *) select_range "${tok%-*}" "${tok#*-}" ;;
+      esac
+      ;;
     '' | *[!0-9]*)
       if ! i="$(index_of "$tok")"; then
         warn "沒有這個項目: $tok"
@@ -462,9 +756,8 @@ toggle_token() {
   esac
 }
 
-checkbox_select() {
+number_select() {
   local line tok
-  select_none
   while true; do
     draw_menu
     printf '> '
@@ -474,20 +767,12 @@ checkbox_select() {
     set -f
     for tok in $line; do
       case "$tok" in
-        a) select_recommended ;;
+        a) select_missing_recommended ;;
         A) select_all ;;
         n) select_none ;;
         d)
           set +f
           return 0
-          ;;
-        f)
-          set +f
-          if have fzf; then
-            fzf_select
-            return 0
-          fi
-          warn "還沒有 fzf。請用編號勾選，例如 7 20 22"
           ;;
         q | quit | exit)
           set +f
@@ -501,46 +786,15 @@ checkbox_select() {
   done
 }
 
-fzf_select() {
-  local i state mark picks line id
-  have fzf || die "找不到 fzf"
-  picks="$(
-    for i in "${!IDS[@]}"; do
-      is_available "$i" || continue
-      if is_installed "$i"; then
-        state="已安裝"
-      else
-        state="未安裝"
-      fi
-      if [ "${RECS[$i]}" = "1" ]; then
-        mark="預設"
-      else
-        mark="    "
-      fi
-      printf '%s\t%s  %-12s %-8s %s\n' \
-        "${IDS[$i]}" "$mark" "${IDS[$i]}" "$state" "${DESCS[$i]}"
-    done | fzf --multi --delimiter="$(printf '\t')" --with-nth=2.. \
-      --prompt '安裝> ' \
-      --header 'Tab 多選，Enter 安裝。沒選到或按 Esc 就取消。'
-  )" || true
-  if [ -z "$picks" ]; then
-    printf '已取消\n'
-    exit 0
-  fi
-  select_none
-  while IFS= read -r line; do
-    [ -n "$line" ] || continue
-    id="${line%%$'\t'*}"
-    if i="$(index_of "$id")"; then
-      SELECTED[$i]=1
-    fi
-  done <<EOF
-$picks
-EOF
-}
-
 interactive_menu() {
-  checkbox_select
+  refresh_states
+  # 一開始就勾好「預設項目裡還沒裝的」，大多數時候直接確認就好。
+  select_missing_recommended
+  if [ "$SIMPLE" -eq 0 ] && tui_supported; then
+    tui_select
+  else
+    number_select
+  fi
 }
 
 index_of() {
@@ -618,24 +872,34 @@ queue_index() {
   QUEUED=$((QUEUED + 1))
 }
 
-ensure_curl_for_specials() {
-  local sidx id need=0 curl_i spec token
+# 專用安裝需要、但這台還沒有的套件，排進套件管理器那一批一起裝。
+queue_dep() {
+  local dep="$1" why="$2" dep_i spec token
+  have "$dep" && return 0
+  dep_i="$(index_of "$dep")" || die "需要 $dep，但清單裡沒有 $dep"
+  spec="$(spec_at "$dep_i")"
+  [ "$spec" != "-" ] && [ "$spec" != "none" ] || die "需要 $dep，但 $OS 沒有 $dep 套件"
+  log "${why}，一併加入 $dep"
+  for token in $spec; do
+    add_token "$token"
+  done
+}
+
+ensure_deps_for_specials() {
+  local sidx id need_curl=0 need_fish=0
   [ "${#SPECIAL_IDX[@]}" -gt 0 ] || return 0
   for sidx in "${SPECIAL_IDX[@]}"; do
     id="${IDS[$sidx]}"
     case "$id" in
-      starship | zellij | go | rust | node) need=1 ;;
+      starship | zellij | go | rust | node) need_curl=1 ;;
+      fisher)
+        need_curl=1
+        need_fish=1
+        ;;
     esac
   done
-  [ "$need" -eq 1 ] || return 0
-  have curl && return 0
-  curl_i="$(index_of curl)" || die "需要 curl，但清單裡沒有 curl"
-  spec="$(spec_at "$curl_i")"
-  [ "$spec" != "-" ] && [ "$spec" != "none" ] || die "需要 curl，但 $OS 沒有 curl 套件"
-  log "下載安裝需要 curl，一併加入"
-  for token in $spec; do
-    add_token "$token"
-  done
+  [ "$need_curl" -eq 0 ] || queue_dep curl "下載安裝需要 curl"
+  [ "$need_fish" -eq 0 ] || queue_dep fish "fisher 需要 fish"
 }
 
 as_root() {
@@ -909,6 +1173,16 @@ install_trash_pip() {
   have trash || die "pip 裝完後仍找不到 trash。若它在 ~/.local/bin，請把該目錄加進 PATH"
 }
 
+install_fisher() {
+  log "安裝 fisher，並裝好 fish_plugins 列的外掛"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "dry-run: fish -c 'curl … fisher.fish | source; fisher install jorgebucaran/fisher <fish_plugins>'"
+    return 0
+  fi
+  have fish || die "找不到 fish"
+  fish -c "$FISHER_INSTALL" || die "fisher 安裝失敗，請看上面的訊息"
+}
+
 run_specials() {
   local sidx id
   [ "${#SPECIAL_IDX[@]}" -gt 0 ] || return 0
@@ -922,6 +1196,7 @@ run_specials() {
       fedora:node) install_node ;;
       macos:compiler | macos:make) install_xcode_clt ;;
       termux:trash) install_trash_pip ;;
+      *:fisher) install_fisher ;;
       *) die "沒有實作 ${id} 在 $OS 的安裝方式" ;;
     esac
   done
@@ -948,7 +1223,7 @@ install_selected() {
     log "沒有選擇任何套件"
     return 0
   fi
-  ensure_curl_for_specials
+  ensure_deps_for_specials
   if [ "$QUEUED" -eq 0 ]; then
     log "沒有需要安裝的項目"
     return 0
@@ -1001,6 +1276,10 @@ main() {
         FORCE=1
         shift
         ;;
+      --simple)
+        SIMPLE=1
+        shift
+        ;;
       --)
         shift
         if [ "$#" -gt 0 ]; then
@@ -1020,6 +1299,7 @@ main() {
   done
 
   load_catalog
+  refresh_states
   log "平台: $OS ($(uname -s 2>/dev/null || echo unknown) $(uname -m 2>/dev/null || echo unknown))"
 
   if [ "$list_only" -eq 1 ]; then
