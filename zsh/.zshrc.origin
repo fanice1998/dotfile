@@ -12,6 +12,8 @@ autoload -Uz compinit
 compinit -C                    # -C 加快啟動速度
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+# WSL 的 /mnt/c 目錄都是 777，預設 ow/tw 是藍字綠底看不清楚，改成跟一般目錄一樣
+export LS_COLORS="${LS_COLORS}:ow=01;34:tw=01;34"
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path ~/.zsh/cache
